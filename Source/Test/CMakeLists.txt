@@ -90,6 +90,7 @@ if(EbsdLib_ENABLE_HDF5)
   set(TEST_NAMES
     ${TEST_NAMES}
     H5EspritReaderTest
+    H5OinaReaderTest
     EdaxOIMReaderTest
   )
 

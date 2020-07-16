@@ -35,6 +35,7 @@
 
 #pragma once
 
+#include <cstring>
 #include <exception>
 #include <sstream>
 #include <string>

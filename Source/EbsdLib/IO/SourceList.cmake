@@ -41,13 +41,14 @@ endif()
 include(${EbsdLibProj_SOURCE_DIR}/Source/EbsdLib/${DIR_NAME}/BrukerNano/SourceList.cmake)
 include(${EbsdLibProj_SOURCE_DIR}/Source/EbsdLib/${DIR_NAME}/HKL/SourceList.cmake)
 include(${EbsdLibProj_SOURCE_DIR}/Source/EbsdLib/${DIR_NAME}/TSL/SourceList.cmake)
-
+include(${EbsdLibProj_SOURCE_DIR}/Source/EbsdLib/${DIR_NAME}/Oxford/SourceList.cmake)
 
 set(EbsdLib_${DIR_NAME}_HDRS 
   ${EbsdLib_${DIR_NAME}_HDRS}
   ${BRUKER_NANO_HDRS}
   ${HKL_HDRS}
   ${TSL_HDRS}
+  ${OXFORD_HDRS}
 )
 
 set(EbsdLib_${DIR_NAME}_SRCS
@@ -55,6 +56,7 @@ set(EbsdLib_${DIR_NAME}_SRCS
   ${BRUKER_NANO_SRCS}
   ${HKL_SRCS}
   ${TSL_SRCS}
+  ${OXFORD_SRCS}
 )
 
 

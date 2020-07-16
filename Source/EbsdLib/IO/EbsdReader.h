@@ -250,6 +250,26 @@ public:
     return 0;
   }
 
+  template <typename ClassType, typename T, typename HeaderEntryClass>
+  int ReadH5EbsdHeaderArray(ClassType* c, const std::string& key, hid_t gid, std::map<std::string, EbsdHeaderEntry::Pointer>& headerMap)
+  {
+    std::vector<T> t;
+    herr_t err = H5Lite::readVectorDataset(gid, key, t);
+    if(err < 0)
+    {
+      std::stringstream ss;
+      ss << c->getNameOfClass() << ": The header value for '" << key << "' was not found in the HDF5 file. Was this header originally found in the files that were imported into this H5EBSD File?";
+      c->setErrorCode(-90001);
+      c->setErrorMessage(ss.str());
+      setErrorCode(err);
+      return err;
+    }
+    EbsdHeaderEntry::Pointer p = headerMap[key];
+    typename HeaderEntryClass::Pointer hec = std::dynamic_pointer_cast<HeaderEntryClass>(p);
+    hec->setValue(t);
+    return 0;
+  }
+
   /**
    * @brief
    */

@@ -127,6 +127,78 @@ public:
 };
 
 /**
+ * @brief
+ */
+template <typename T>
+class EbsdLib_EXPORT AngHeaderArray : public EbsdHeaderEntry
+{
+
+public:
+  using Self = AngHeaderArray<T>;
+  using Pointer = std::shared_ptr<Self>;
+  using ConstPointer = std::shared_ptr<const Self>;
+  using WeakPointer = std::weak_ptr<Self>;
+  using ConstWeakPointer = std::weak_ptr<Self>;
+  static Pointer NullPointer();
+
+  HEADERENTRY_NEW_SUPERCLASS(AngHeaderArray<T>, EbsdHeaderEntry)
+
+  ~AngHeaderArray() override = default;
+
+  std::string getKey() override
+  {
+    return m_key;
+  }
+#ifdef EbsdLib_ENABLE_HDF5
+  std::string getHDFType() override
+  {
+    T value = static_cast<T>(0);
+    return H5Lite::HDFTypeForPrimitiveAsStr(value);
+  }
+#endif
+
+  void parseValue(std::string& value) override
+  {
+  }
+
+  void print(std::ostream& out) override
+  {
+    for(const auto& value : m_value)
+    {
+      out << value << " ";
+    }
+    out << std::endl;
+  }
+
+  std::vector<T> getValue()
+  {
+    return m_value;
+  }
+  void setValue(const std::vector<T>& value)
+  {
+    m_value = value;
+  }
+
+protected:
+  AngHeaderArray(std::string key)
+  : m_key(std::move(key))
+  {
+  }
+
+  AngHeaderArray() = default;
+
+private:
+  std::vector<T> m_value;
+  std::string m_key;
+
+public:
+  AngHeaderArray(const AngHeaderArray&) = delete;            // Copy Constructor Not Implemented
+  AngHeaderArray(AngHeaderArray&&) = delete;                 // Move Constructor Not Implemented
+  AngHeaderArray& operator=(const AngHeaderArray&) = delete; // Copy Assignment Not Implemented
+  AngHeaderArray& operator=(AngHeaderArray&&) = delete;      // Move Assignment Not Implemented
+};
+
+/**
  * @class AngStringHeaderEntry AngStringHeaderEntry.h EbsdLib/IO/TSL/AngHeaderEntry.h
  * @brief Header entry that holds a string type value
  *
