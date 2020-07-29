@@ -60,21 +60,21 @@ public:
     }
 
     int32_t ncols = reader->getNumColumns();
-    DREAM3D_REQUIRED(ncols, ==, 600)
+    DREAM3D_REQUIRED(ncols, ==, 200)
 
     int32_t nrows = reader->getNumRows();
-    DREAM3D_REQUIRED(nrows, ==, 600)
+    DREAM3D_REQUIRED(nrows, ==, 200)
 
     float xstep = reader->getXStep();
-    DREAM3D_REQUIRED(xstep, ==, 0.0)
+    DREAM3D_REQUIRED(xstep, ==, 0.699999988079071)
     float ystep = reader->getYStep();
-    DREAM3D_REQUIRED(ystep, ==, 0.0)
+    DREAM3D_REQUIRED(ystep, ==, 0.699999988079071)
 
     int32_t xDim = reader->getXDimension();
-    DREAM3D_REQUIRED(xDim, ==, 600)
+    DREAM3D_REQUIRED(xDim, ==, 200)
 
     int32_t yDim = reader->getYDimension();
-    DREAM3D_REQUIRED(yDim, ==, 600)
+    DREAM3D_REQUIRED(yDim, ==, 200)
 
     std::list<std::string> scanNames;
     err = reader->readScanNames(scanNames);

@@ -48,6 +48,7 @@ const std::string EBSD("EBSD");
 const std::string Header("Header");
 const std::string Phases("Phases");
 const std::string Data("Data");
+const std::string Index("Index");
 
 // Header Section for EBSD Data
 std::string AcquisitionDate("Acquisition Date");

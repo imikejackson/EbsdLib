@@ -354,9 +354,19 @@ int H5OinaReader::readScanNames(std::list<std::string>& names)
   }
   H5ScopedFileSentinel sentinel(&fileId, false);
 
-  int32_t err = H5Utilities::getGroupObjects(fileId, H5Utilities::CustomHDFDataTypes::Group, names);
-  setErrorCode(err);
-  return err;
+  std::vector<int32_t> scans;
+  herr_t err = H5Lite::readVectorDataset(fileId, EbsdLib::H5Oina::Index, scans);
+  if(err < 0)
+  {
+    return err;
+  }
+  for(const auto& i : scans)
+  {
+    std::stringstream out;
+    out << i;
+    names.emplace_back(out.str());
+  }
+  return 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -478,27 +488,28 @@ int H5OinaReader::readHeader(hid_t parId)
     READ_PHASE_HEADER_ARRAY("H5OinaReader", pid, float, EbsdLib::H5Oina::LatticeDimensions, LatticeDimensions, currentPhase);
     READ_PHASE_HEADER_DATA("H5OinaReader", pid, int32_t, EbsdLib::H5Oina::LaueGroup, LaueGroup, currentPhase)
     READ_PHASE_HEADER_DATA("H5OinaReader", pid, int32_t, EbsdLib::H5Oina::NumberReflectors, NumberReflectors, currentPhase)
-    //    READ_PHASE_STRING_DATA("H5OinaReader", pid, EbsdLib::H5Oina::PhaseName, PhaseName, currentPhase)
-    //    READ_PHASE_STRING_DATA("H5OinaReader", pid, EbsdLib::H5Oina::Reference, Reference, currentPhase)
+    READ_PHASE_STRING_DATA("H5OinaReader", pid, EbsdLib::H5Oina::PhaseName, PhaseName, currentPhase)
+    READ_PHASE_STRING_DATA("H5OinaReader", pid, EbsdLib::H5Oina::Reference, Reference, currentPhase)
     READ_PHASE_HEADER_DATA("H5OinaReader", pid, int32_t, EbsdLib::H5Oina::SpaceGroup, SpaceGroup, currentPhase)
 
-    {
-      std::string t;
-      err = H5Lite::readStringDataset(pid, EbsdLib::H5Oina::PhaseName, t);
-      if(err < 0)
-      {
-        std::stringstream ss;
-        ss << "H5OinaReader"
-           << ": The header value for '" << EbsdLib::H5Oina::PhaseName << "' was not found in the H5EBSD file. Was this header originally found in the files that were imported into this H5EBSD File?";
-        setErrorCode(-90003);
-        setErrorMessage(ss.str());
-        err = H5Gclose(pid);
-        H5Gclose(phasesGid);
-        H5Gclose(gid);
-        return -1;
-      }
-      currentPhase->setPhaseName(t);
-    }
+    //    {
+    //      std::string t;
+    //      err = H5Lite::readStringDataset(pid, EbsdLib::H5Oina::PhaseName, t);
+    //      if(err < 0)
+    //      {
+    //        std::stringstream ss;
+    //        ss << "H5OinaReader"
+    //           << ": The header value for '" << EbsdLib::H5Oina::PhaseName << "' was not found in the H5EBSD file. Was this header originally found in the files that were imported into this H5EBSD
+    //           File?";
+    //        setErrorCode(-90003);
+    //        setErrorMessage(ss.str());
+    //        err = H5Gclose(pid);
+    //        H5Gclose(phasesGid);
+    //        H5Gclose(gid);
+    //        return -1;
+    //      }
+    //      currentPhase->setPhaseName(t);
+    //    }
 
     PhaseVector.push_back(currentPhase);
     err = H5Gclose(pid);
@@ -524,12 +535,9 @@ int H5OinaReader::readData(hid_t parId)
 {
   int err = -1;
 
-  // Initialize new pointers
-  size_t totalDataRows = 0;
-
   size_t nColumns = getNumColumns();
   size_t nRows = getNumRows();
-
+  size_t totalDataRows = nColumns * nRows;
   if(nRows < 1)
   {
     err = -200;
