@@ -181,7 +181,7 @@ EbsdLib::FloatArrayType::Pointer AngleFileLoader::loadData()
     }
     else if(m_AngleRepresentation == QuaternionAngles)
     {
-      QuatF quat(4);
+      QuatF quat;
 
       quat.x() = std::stof(tokens[0]);
       quat.y() = std::stof(tokens[1]);

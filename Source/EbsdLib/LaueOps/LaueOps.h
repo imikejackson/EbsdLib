@@ -180,11 +180,20 @@ public:
    */
   virtual OrientationType getMDFFZRod(const OrientationType& rod) const = 0;
 
-  virtual QuatD getNearestQuat(const QuatD& q1, const QuatD& q2) const = 0;
-  virtual QuatF getNearestQuat(const QuatF& q1f, const QuatF& q2f) const = 0;
+  /**
+   * @brief This will return the closest quaternion and will guarantee that the scalar component of the
+   * returned Quaternion will always be positive, however this means the that returned quaternion may
+   * be anti-parallel to the reference quaternion.
+   *
+   * @param referenceQuat
+   * @param inputQuat
+   * @return Quaternion closest, but possibly anti-parallel to the reference quaterion.
+   */
+  virtual QuatD getNearestQuat(const QuatD& referenceQuat, const QuatD& inputQuat) const = 0;
+  virtual QuatF getNearestQuat(const QuatF& referenceQuat, const QuatF& inputQuat) const = 0;
 
   /**
-   * @brief getFZQuat Returns a Quaternioni that lies in the Fundemental Zone (FZ)
+   * @brief getFZQuat Returns a Quaternion that lies in the Fundemental Zone (FZ)
    * @param qr Input Quaternion
    * @return
    */
@@ -288,7 +297,14 @@ protected:
 
   OrientationType _calcRodNearestOrigin(const std::vector<OrientationD>& rodsym, const OrientationType& rod) const;
 
-  QuatD _calcNearestQuat(const std::vector<QuatD>& quatsym, const QuatD& q1, const QuatD& q2) const;
+  /**
+   * @brief Calculates the nearest quaternion to a reference quaternion
+   * @param quatsym The symmetry operators for the Laue system being used.
+   * @param ref The reference quaternion
+   * @param q2 the input quaternion
+   * @return possibly new quaternion that represents the symmetrically closest quaternion to the reference
+   */
+  QuatD _calcNearestQuat(const std::vector<QuatD>& quatsym, const QuatD& reference, const QuatD& q2) const;
 
   QuatD _calcQuatNearestOrigin(const std::vector<QuatD>& quatsym, const QuatD& qr) const;
 

@@ -169,6 +169,32 @@ public:
   }
 
   /**
+   * @brief copyFrom
+   * @param source
+   * @param order
+   */
+  template <typename SourceType>
+  static Quaternion<T> CopyFrom(const SourceType* source, Order order)
+  {
+    Quaternion<T> q;
+    if(order == Order::VectorScalar)
+    {
+      q.x() = static_cast<T>(source[0]);
+      q.y() = static_cast<T>(source[1]);
+      q.z() = static_cast<T>(source[2]);
+      q.w() = static_cast<T>(source[3]);
+    }
+    else
+    {
+      q.w() = static_cast<T>(source[0]);
+      q.x() = static_cast<T>(source[1]);
+      q.y() = static_cast<T>(source[2]);
+      q.z() = static_cast<T>(source[3]);
+    }
+    return q;
+  }
+
+  /**
    * @brief Assumes XYZW data layout
    * @param index
    * @return
@@ -298,6 +324,30 @@ public:
     return *this;
   }
 
+  /**
+   * @brief Compare quaternion to this one
+   * @param rhs
+   * @return
+   */
+  bool operator==(const Quaternion& rhs) const
+  {
+    return m_X == rhs.m_X && m_Y == rhs.m_Y && m_Z == rhs.m_Z && m_W == rhs.m_W;
+  }
+
+  /**
+   * @brief Is the input quaternioin different than this one.
+   * @param rhs
+   * @return
+   */
+  bool operator!=(const Quaternion& rhs) const
+  {
+    return !(*this == rhs);
+  }
+
+  /**
+   * @brief operator -
+   * @return
+   */
   Quaternion operator-() const
   {
     return {-m_X, -m_Y, -m_Z, -m_W};

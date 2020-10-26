@@ -10,3 +10,8 @@ target_include_directories(make_ipf PUBLIC ${EbsdLibProj_SOURCE_DIR}/Source)
 add_executable(convert_orientations ${EbsdLibProj_SOURCE_DIR}/Source/Apps/ConvertOrientations.cpp)
 target_link_libraries(convert_orientations PUBLIC EbsdLib)
 target_include_directories(convert_orientations PUBLIC ${EbsdLibProj_SOURCE_DIR}/Source)
+
+
+add_executable(Sphere2Pole ${EbsdLibProj_SOURCE_DIR}/Source/Apps/Sphere2Pole.cpp)
+target_link_libraries(Sphere2Pole PUBLIC EbsdLib)
+target_include_directories(Sphere2Pole PUBLIC ${EbsdLibProj_SOURCE_DIR}/Source)

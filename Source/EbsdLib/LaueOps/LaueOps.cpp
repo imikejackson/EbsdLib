@@ -52,6 +52,7 @@
 #include "EbsdLib/LaueOps/TriclinicOps.h"
 #include "EbsdLib/LaueOps/TrigonalLowOps.h"
 #include "EbsdLib/LaueOps/TrigonalOps.h"
+#include "EbsdLib/Math/EbsdLibMath.h"
 #include "EbsdLib/Math/EbsdLibRandom.h"
 #include "EbsdLib/Utilities/ColorTable.h"
 
@@ -185,8 +186,13 @@ OrientationType LaueOps::_calcRodNearestOrigin(const std::vector<OrientationD>& 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-QuatD LaueOps::_calcNearestQuat(const std::vector<QuatD>& quatsym, const QuatD& q1, const QuatD& q2) const
+QuatD LaueOps::_calcNearestQuat(const std::vector<QuatD>& quatsym, const QuatD& reference, const QuatD& q2) const
 {
+  QuatD ref = reference;
+  if(ref.w() < 0.0)
+  {
+    ref.negate();
+  }
   QuatD out;
   double dist = 0.0;
   double smallestdist = 1000000.0f;
@@ -194,12 +200,9 @@ QuatD LaueOps::_calcNearestQuat(const std::vector<QuatD>& quatsym, const QuatD& 
   size_t numsym = quatsym.size();
   for(size_t i = 0; i < numsym; i++)
   {
-    QuatD qc = quatsym[i] * q2;
-    if(qc.w() < 0)
-    {
-      qc.negate();
-    }
-    dist = static_cast<double>(1 - (qc.w() * q1.w() + qc.x() * q1.x() + qc.y() * q1.y() + qc.z() * q1.z()));
+    QuatD qc = (quatsym[i] * q2);
+
+    dist = static_cast<double>(1 - std::fabs(qc.w() * ref.w() + qc.x() * ref.x() + qc.y() * ref.y() + qc.z() * ref.z()));
     if(dist < smallestdist)
     {
       smallestdist = dist;
@@ -224,7 +227,7 @@ QuatD LaueOps::_calcQuatNearestOrigin(const std::vector<QuatD>& quatsym, const Q
   {
     QuatD qc = quatsym[i] * qr;
 
-    dist = 1 - (qc.w() * qc.w());
+    dist = 1 - std::fabs(qc.w());
     if(dist < smallestdist)
     {
       smallestdist = dist;
