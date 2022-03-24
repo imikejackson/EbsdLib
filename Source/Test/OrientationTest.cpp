@@ -804,10 +804,9 @@ Orientation Matrix               : | -1.0000   0.0000   0.0000 |
   // -----------------------------------------------------------------------------
   void TestInputs()
   {
-    std::vector<size_t> cDims(1, 3);
-    EbsdLib::FloatArrayType::Pointer data = EbsdLib::FloatArrayType::CreateArray(2, cDims, "Eulers", true);
-    data->initializeWithZeros();
-    float* fPtr = data->getPointer(0);
+    std::vector<size_t> cDims = {3};
+    EbsdLib::FloatArrayType data(2 * cDims[0], 0.0);
+    float* fPtr = data.data();
     fPtr[0] = 90.0f * EbsdLib::Constants::k_PiOver180F;
     fPtr[1] = 0.0f;
     fPtr[2] = 0.0f;

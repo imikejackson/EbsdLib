@@ -220,7 +220,7 @@ public:
 
   virtual double getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool maxSF) const = 0;
 
-  virtual void generateSphereCoordsFromEulers(EbsdLib::FloatArrayType* eulers, EbsdLib::FloatArrayType* c1, EbsdLib::FloatArrayType* c2, EbsdLib::FloatArrayType* c3) const = 0;
+  virtual void generateSphereCoordsFromEulers(EbsdLib::FloatArrayType& eulers, EbsdLib::FloatArrayType& c1, EbsdLib::FloatArrayType& c2, EbsdLib::FloatArrayType& c3) const = 0;
 
   /**
    * @brief generateIPFColor Generates an RGB Color from a Euler Angle and Reference Direction
@@ -270,7 +270,7 @@ public:
    * @return A std::vector of EbsdLib::UInt8ArrayType pointers where each one represents a 2D RGB array that can be used to initialize
    * an image object from other libraries and written out to disk.
    */
-  virtual std::vector<EbsdLib::UInt8ArrayType::Pointer> generatePoleFigure(PoleFigureConfiguration_t& config) const = 0;
+  virtual std::vector<EbsdLib::UInt8ArrayType> generatePoleFigure(PoleFigureConfiguration_t& config) const = 0;
 
 protected:
   LaueOps();

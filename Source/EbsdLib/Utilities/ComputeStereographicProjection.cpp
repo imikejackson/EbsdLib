@@ -41,7 +41,7 @@
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-ComputeStereographicProjection::ComputeStereographicProjection(EbsdLib::FloatArrayType* xyzCoords, PoleFigureConfiguration_t* config, EbsdLib::DoubleArrayType* intensity)
+ComputeStereographicProjection::ComputeStereographicProjection(EbsdLib::FloatArrayType& xyzCoords, PoleFigureConfiguration_t* config, EbsdLib::DoubleArrayType& intensity)
 : m_XYZCoords(xyzCoords)
 , m_Config(config)
 , m_Intensity(intensity)
@@ -58,15 +58,15 @@ ComputeStereographicProjection::~ComputeStereographicProjection() = default;
 // -----------------------------------------------------------------------------
 void ComputeStereographicProjection::operator()() const
 {
-  m_Intensity->resizeTuples(static_cast<size_t>(m_Config->imageDim * m_Config->imageDim));
-  m_Intensity->initializeWithZeros();
+  m_Intensity.resize(static_cast<size_t>(m_Config->imageDim * m_Config->imageDim));
+  std::fill(m_Intensity.begin(), m_Intensity.end(), 0.0);
 
   if(m_Config->discrete)
   {
     int halfDim = m_Config->imageDim / 2;
-    double* intensity = m_Intensity->getPointer(0);
-    size_t numCoords = m_XYZCoords->getNumberOfTuples();
-    float* xyzPtr = m_XYZCoords->getPointer(0);
+    double* intensity = m_Intensity.data();
+    size_t numCoords = m_XYZCoords.size() / 3;
+    float* xyzPtr = m_XYZCoords.data();
     for(size_t i = 0; i < numCoords; i++)
     {
       if(xyzPtr[i * 3 + 2] < 0.0f)
@@ -108,6 +108,6 @@ void ComputeStereographicProjection::operator()() const
     lambert->writeHDF5Data(file_id);
     H5Fclose(file_id);
 #endif
-    lambert->createStereographicProjection(m_Config->imageDim, *m_Intensity);
+    lambert->createStereographicProjection(m_Config->imageDim, m_Intensity);
   }
 }

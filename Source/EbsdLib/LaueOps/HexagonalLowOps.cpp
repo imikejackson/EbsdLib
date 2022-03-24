@@ -1026,13 +1026,13 @@ namespace HexagonalLow
 {
 class GenerateSphereCoordsImpl
 {
-  EbsdLib::FloatArrayType* m_Eulers;
-  EbsdLib::FloatArrayType* m_xyz001;
-  EbsdLib::FloatArrayType* m_xyz011;
-  EbsdLib::FloatArrayType* m_xyz111;
+  EbsdLib::FloatArrayType& m_Eulers;
+  EbsdLib::FloatArrayType& m_xyz001;
+  EbsdLib::FloatArrayType& m_xyz011;
+  EbsdLib::FloatArrayType& m_xyz111;
 
 public:
-  GenerateSphereCoordsImpl(EbsdLib::FloatArrayType* eulerAngles, EbsdLib::FloatArrayType* xyz001Coords, EbsdLib::FloatArrayType* xyz011Coords, EbsdLib::FloatArrayType* xyz111Coords)
+  GenerateSphereCoordsImpl(EbsdLib::FloatArrayType& eulerAngles, EbsdLib::FloatArrayType& xyz001Coords, EbsdLib::FloatArrayType& xyz011Coords, EbsdLib::FloatArrayType& xyz111Coords)
   : m_Eulers(eulerAngles)
   , m_xyz001(xyz001Coords)
   , m_xyz011(xyz011Coords)
@@ -1049,7 +1049,7 @@ public:
 
     for(size_t i = start; i < end; ++i)
     {
-      OrientationType eu(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2));
+      OrientationType eu(m_Eulers[i * 3], m_Eulers[i * 3 + 1], m_Eulers[i * 3 + 2]);
       OrientationTransformation::eu2om<OrientationType, OrientationType>(eu).toGMatrix(g);
 
       EbsdMatrixMath::Transpose3x3(g, gTranpose);
@@ -1059,27 +1059,27 @@ public:
       direction[0] = 0.0;
       direction[1] = 0.0;
       direction[2] = 1.0;
-      EbsdMatrixMath::Multiply3x3with3x1(gTranpose, direction, m_xyz001->getPointer(i * 6));
-      EbsdMatrixMath::Copy3x1(m_xyz001->getPointer(i * 6), m_xyz001->getPointer(i * 6 + 3));
-      EbsdMatrixMath::Multiply3x1withConstant(m_xyz001->getPointer(i * 6 + 3), -1.0f);
+      EbsdMatrixMath::Multiply3x3with3x1(gTranpose, direction, m_xyz001.data() + (i * 6));
+      EbsdMatrixMath::Copy3x1(m_xyz001.data() + (i * 6), m_xyz001.data() + (i * 6 + 3));
+      EbsdMatrixMath::Multiply3x1withConstant(m_xyz001.data() + (i * 6 + 3), -1.0f);
 
       // -----------------------------------------------------------------------------
       // 011 Family
       direction[0] = -0.5;
       direction[1] = EbsdLib::Constants::k_Root3Over2D;
       direction[2] = 0.0;
-      EbsdMatrixMath::Multiply3x3with3x1(gTranpose, direction, m_xyz011->getPointer(i * 6));
-      EbsdMatrixMath::Copy3x1(m_xyz011->getPointer(i * 6), m_xyz011->getPointer(i * 6 + 3));
-      EbsdMatrixMath::Multiply3x1withConstant(m_xyz011->getPointer(i * 6 + 3), -1.0f);
+      EbsdMatrixMath::Multiply3x3with3x1(gTranpose, direction, m_xyz011.data() + (i * 6));
+      EbsdMatrixMath::Copy3x1(m_xyz011.data() + (i * 6), m_xyz011.data() + (i * 6 + 3));
+      EbsdMatrixMath::Multiply3x1withConstant(m_xyz011.data() + (i * 6 + 3), -1.0f);
 
       // -----------------------------------------------------------------------------
       // 111 Family
       direction[0] = 1;
       direction[1] = 0;
       direction[2] = 0;
-      EbsdMatrixMath::Multiply3x3with3x1(gTranpose, direction, m_xyz111->getPointer(i * 6));
-      EbsdMatrixMath::Copy3x1(m_xyz111->getPointer(i * 6), m_xyz111->getPointer(i * 6 + 3));
-      EbsdMatrixMath::Multiply3x1withConstant(m_xyz111->getPointer(i * 6 + 3), -1.0f);
+      EbsdMatrixMath::Multiply3x3with3x1(gTranpose, direction, m_xyz111.data() + (i * 6));
+      EbsdMatrixMath::Copy3x1(m_xyz111.data() + (i * 6), m_xyz111.data() + (i * 6 + 3));
+      EbsdMatrixMath::Multiply3x1withConstant(m_xyz111.data() + (i * 6 + 3), -1.0f);
     }
   }
 
@@ -1095,22 +1095,22 @@ public:
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void HexagonalLowOps::generateSphereCoordsFromEulers(EbsdLib::FloatArrayType* eulers, EbsdLib::FloatArrayType* xyz0001, EbsdLib::FloatArrayType* xyz1010, EbsdLib::FloatArrayType* xyz1120) const
+void HexagonalLowOps::generateSphereCoordsFromEulers(EbsdLib::FloatArrayType& eulers, EbsdLib::FloatArrayType& xyz0001, EbsdLib::FloatArrayType& xyz1010, EbsdLib::FloatArrayType& xyz1120) const
 {
-  size_t nOrientations = eulers->getNumberOfTuples();
+  size_t nOrientations = eulers.size() / 3;
 
   // Sanity Check the size of the arrays
-  if(xyz0001->getNumberOfTuples() < nOrientations * HexagonalLow::symSize0)
+  if(xyz0001.size() < nOrientations * HexagonalLow::symSize0 * 3)
   {
-    xyz0001->resizeTuples(nOrientations * HexagonalLow::symSize0 * 3);
+    xyz0001.resize(nOrientations * HexagonalLow::symSize0 * 3);
   }
-  if(xyz1010->getNumberOfTuples() < nOrientations * HexagonalLow::symSize1)
+  if(xyz1010.size() < nOrientations * HexagonalLow::symSize1 * 3)
   {
-    xyz1010->resizeTuples(nOrientations * HexagonalLow::symSize1 * 3);
+    xyz1010.resize(nOrientations * HexagonalLow::symSize1 * 3);
   }
-  if(xyz1120->getNumberOfTuples() < nOrientations * HexagonalLow::symSize2)
+  if(xyz1120.size() < nOrientations * HexagonalLow::symSize2 * 3)
   {
-    xyz1120->resizeTuples(nOrientations * HexagonalLow::symSize2 * 3);
+    xyz1120.resize(nOrientations * HexagonalLow::symSize2 * 3);
   }
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
@@ -1252,7 +1252,7 @@ EbsdLib::Rgb HexagonalLowOps::generateRodriguesColor(double r1, double r2, doubl
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalLowOps::generatePoleFigure(PoleFigureConfiguration_t& config) const
+std::vector<EbsdLib::UInt8ArrayType> HexagonalLowOps::generatePoleFigure(PoleFigureConfiguration_t& config) const
 {
   std::string label0 = std::string("<0001>");
   std::string label1 = std::string("<11-20>");
@@ -1270,46 +1270,46 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalLowOps::generatePoleFigur
     label2 = config.labels.at(2);
   }
 
-  size_t numOrientations = config.eulers->getNumberOfTuples();
+  size_t numOrientations = config.eulers->size() / 3;
 
   // Create an Array to hold the XYZ Coordinates which are the coords on the sphere.
   // this is size for CUBIC ONLY, <001> Family
   std::vector<size_t> dims(1, 3);
-  EbsdLib::FloatArrayType::Pointer xyz001 = EbsdLib::FloatArrayType::CreateArray(numOrientations * HexagonalLow::symSize0, dims, label0 + std::string("xyzCoords"), true);
+  EbsdLib::FloatArrayType xyz001 (numOrientations * 3 * HexagonalLow::symSize0);
   // this is size for CUBIC ONLY, <011> Family
-  EbsdLib::FloatArrayType::Pointer xyz011 = EbsdLib::FloatArrayType::CreateArray(numOrientations * HexagonalLow::symSize1, dims, label1 + std::string("xyzCoords"), true);
+  EbsdLib::FloatArrayType xyz011 (numOrientations * 3 * HexagonalLow::symSize1);
   // this is size for CUBIC ONLY, <111> Family
-  EbsdLib::FloatArrayType::Pointer xyz111 = EbsdLib::FloatArrayType::CreateArray(numOrientations * HexagonalLow::symSize2, dims, label2 + std::string("xyzCoords"), true);
+  EbsdLib::FloatArrayType xyz111 (numOrientations * 3 * HexagonalLow::symSize2);
 
   config.sphereRadius = 1.0;
 
   // Generate the coords on the sphere **** Parallelized
-  generateSphereCoordsFromEulers(config.eulers, xyz001.get(), xyz011.get(), xyz111.get());
+  generateSphereCoordsFromEulers(*(config.eulers), xyz001, xyz011, xyz111);
 
   // These arrays hold the "intensity" images which eventually get converted to an actual Color RGB image
   // Generate the modified Lambert projection images (Squares, 2 of them, 1 for northern hemisphere, 1 for southern hemisphere
-  EbsdLib::DoubleArrayType::Pointer intensity001 = EbsdLib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label0 + "_Intensity_Image", true);
-  EbsdLib::DoubleArrayType::Pointer intensity011 = EbsdLib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label1 + "_Intensity_Image", true);
-  EbsdLib::DoubleArrayType::Pointer intensity111 = EbsdLib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label2 + "_Intensity_Image", true);
+  EbsdLib::DoubleArrayType intensity001 (config.imageDim * config.imageDim, 0.0);
+  EbsdLib::DoubleArrayType intensity011 (config.imageDim * config.imageDim, 0.0);
+  EbsdLib::DoubleArrayType intensity111 (config.imageDim * config.imageDim, 0.0);
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
   bool doParallel = true;
 
   if(doParallel)
   {
     std::shared_ptr<tbb::task_group> g(new tbb::task_group);
-    g->run(ComputeStereographicProjection(xyz001.get(), &config, intensity001.get()));
-    g->run(ComputeStereographicProjection(xyz011.get(), &config, intensity011.get()));
-    g->run(ComputeStereographicProjection(xyz111.get(), &config, intensity111.get()));
+    g->run(ComputeStereographicProjection(xyz001, &config, intensity001));
+    g->run(ComputeStereographicProjection(xyz011, &config, intensity011));
+    g->run(ComputeStereographicProjection(xyz111, &config, intensity111));
     g->wait(); // Wait for all the threads to complete before moving on.
   }
   else
 #endif
   {
-    ComputeStereographicProjection m001(xyz001.get(), &config, intensity001.get());
+    ComputeStereographicProjection m001(xyz001, &config, intensity001);
     m001();
-    ComputeStereographicProjection m011(xyz011.get(), &config, intensity011.get());
+    ComputeStereographicProjection m011(xyz011, &config, intensity011);
     m011();
-    ComputeStereographicProjection m111(xyz111.get(), &config, intensity111.get());
+    ComputeStereographicProjection m111(xyz111, &config, intensity111);
     m111();
   }
 
@@ -1317,8 +1317,8 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalLowOps::generatePoleFigur
   double max = std::numeric_limits<double>::min();
   double min = std::numeric_limits<double>::max();
 
-  double* dPtr = intensity001->getPointer(0);
-  size_t count = intensity001->getNumberOfTuples();
+  double* dPtr = intensity001.data();
+  size_t count = intensity001.size();
   for(size_t i = 0; i < count; ++i)
   {
     if(dPtr[i] > max)
@@ -1331,8 +1331,8 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalLowOps::generatePoleFigur
     }
   }
 
-  dPtr = intensity011->getPointer(0);
-  count = intensity011->getNumberOfTuples();
+  dPtr = intensity011.data();
+  count = intensity011.size();
   for(size_t i = 0; i < count; ++i)
   {
     if(dPtr[i] > max)
@@ -1345,8 +1345,8 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalLowOps::generatePoleFigur
     }
   }
 
-  dPtr = intensity111->getPointer(0);
-  count = intensity111->getNumberOfTuples();
+  dPtr = intensity111.data();
+  count = intensity111.size();
   for(size_t i = 0; i < count; ++i)
   {
     if(dPtr[i] > max)
@@ -1363,11 +1363,11 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalLowOps::generatePoleFigur
   config.maxScale = max;
 
   dims[0] = 4;
-  EbsdLib::UInt8ArrayType::Pointer image001 = EbsdLib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label0, true);
-  EbsdLib::UInt8ArrayType::Pointer image011 = EbsdLib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label1, true);
-  EbsdLib::UInt8ArrayType::Pointer image111 = EbsdLib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label2, true);
+  EbsdLib::UInt8ArrayType image001(config.imageDim * config.imageDim * 4, 0);
+  EbsdLib::UInt8ArrayType image011(config.imageDim * config.imageDim * 4, 0);
+  EbsdLib::UInt8ArrayType image111(config.imageDim * config.imageDim * 4, 0);
 
-  std::vector<EbsdLib::UInt8ArrayType::Pointer> poleFigures(3);
+  std::vector<EbsdLib::UInt8ArrayType> poleFigures(3);
   if(config.order.size() == 3)
   {
     poleFigures[config.order[0]] = image001;
@@ -1385,19 +1385,19 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalLowOps::generatePoleFigur
   if(doParallel)
   {
     std::shared_ptr<tbb::task_group> g(new tbb::task_group);
-    g->run(GeneratePoleFigureRgbaImageImpl(intensity001.get(), &config, image001.get()));
-    g->run(GeneratePoleFigureRgbaImageImpl(intensity011.get(), &config, image011.get()));
-    g->run(GeneratePoleFigureRgbaImageImpl(intensity111.get(), &config, image111.get()));
+    g->run(GeneratePoleFigureRgbaImageImpl(intensity001, config, image001));
+    g->run(GeneratePoleFigureRgbaImageImpl(intensity011, config, image011));
+    g->run(GeneratePoleFigureRgbaImageImpl(intensity111, config, image111));
     g->wait(); // Wait for all the threads to complete before moving on.
   }
   else
 #endif
   {
-    GeneratePoleFigureRgbaImageImpl m001(intensity001.get(), &config, image001.get());
+    GeneratePoleFigureRgbaImageImpl m001(intensity001, config, image001);
     m001();
-    GeneratePoleFigureRgbaImageImpl m011(intensity011.get(), &config, image011.get());
+    GeneratePoleFigureRgbaImageImpl m011(intensity011, config, image011);
     m011();
-    GeneratePoleFigureRgbaImageImpl m111(intensity111.get(), &config, image111.get());
+    GeneratePoleFigureRgbaImageImpl m111(intensity111, config, image111);
     m111();
   }
 
@@ -1407,12 +1407,12 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalLowOps::generatePoleFigur
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-EbsdLib::UInt8ArrayType::Pointer HexagonalLowOps::generateIPFTriangleLegend(int imageDim) const
+EbsdLib::UInt8ArrayType HexagonalLowOps::generateIPFTriangleLegend(int imageDim) const
 {
 
   std::vector<size_t> dims(1, 4);
-  EbsdLib::UInt8ArrayType::Pointer image = EbsdLib::UInt8ArrayType::CreateArray(imageDim * imageDim, dims, getSymmetryName() + " Triangle Legend", true);
-  uint32_t* pixelPtr = reinterpret_cast<uint32_t*>(image->getPointer(0));
+  EbsdLib::UInt8ArrayType image (imageDim * imageDim * 4);
+  uint32_t* pixelPtr = reinterpret_cast<uint32_t*>(image.data());
 
   double xInc = 1.0 / static_cast<double>(imageDim);
   double yInc = 1.0 / static_cast<double>(imageDim);

@@ -967,9 +967,8 @@ Orientation Matrix               : | -1.0000   0.0000   0.0000 |
   {
     const float k_PiOver180f = EbsdLib::Constants::k_PiOver180F;
     std::vector<size_t> cDims(1, 3);
-    EbsdLib::FloatArrayType::Pointer data = EbsdLib::FloatArrayType::CreateArray(2, cDims, "Eulers", true);
-    data->initializeWithZeros();
-    float* fPtr = data->getPointer(0);
+    EbsdLib::FloatArrayType data(2 *  cDims[0], 0.0F);
+    float* fPtr = data.data();
     fPtr[0] = 90.0F * k_PiOver180f;
     fPtr[1] = 0.0F;
     fPtr[2] = 0.0F;

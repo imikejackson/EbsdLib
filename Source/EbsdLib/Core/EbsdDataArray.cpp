@@ -554,7 +554,7 @@ bool EbsdDataArray<T>::copyFromArray(size_t destTupleOffset, EbsdDataArray<T>::C
   {
     return false;
   }
-  if(nullptr == source->getPointer(0))
+  if(nullptr == source->data(0))
   {
     return false;
   }
@@ -585,7 +585,7 @@ bool EbsdDataArray<T>::copyFromArray(size_t destTupleOffset, EbsdDataArray<T>::C
 template <typename T>
 bool EbsdDataArray<T>::copyIntoArray(Pointer dest) const
 {
-  if(m_IsAllocated && dest->isAllocated() && m_Array && dest->getPointer(0))
+  if(m_IsAllocated && dest->isAllocated() && m_Array && dest->data(0))
   {
     std::copy(cbegin(), cend(), dest->begin());
     return true;
@@ -853,17 +853,17 @@ void* EbsdDataArray<T>::getVoidPointer(size_t i)
 }
 
 // -----------------------------------------------------------------------------
-template <typename T>
-T* EbsdDataArray<T>::getPointer(size_t i) const
-{
-#ifndef NDEBUG
-  if(m_Size > 0)
-  {
-    EBSD_INDEX_OUT_OF_RANGE(i < m_Size);
-  }
-#endif
-  return m_Array + i;
-}
+//template <typename T>
+//T* EbsdDataArray<T>::getPointer(size_t i) const
+//{
+//#ifndef NDEBUG
+//  if(m_Size > 0)
+//  {
+//    EBSD_INDEX_OUT_OF_RANGE(i < m_Size);
+//  }
+//#endif
+//  return m_Array + i;
+//}
 
 // -----------------------------------------------------------------------------
 template <typename T>
@@ -1533,30 +1533,30 @@ T* EbsdDataArray<T>::resizeAndExtend(size_t size)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-#if !defined(__APPLE__) && !defined(_MSC_VER)
-#undef EbsdLib_EXPORT
-#define EbsdLib_EXPORT
-#endif
-
-template class EbsdLib_EXPORT EbsdDataArray<bool>;
-
-template class EbsdLib_EXPORT EbsdDataArray<char>;
-
-template class EbsdLib_EXPORT EbsdDataArray<int8_t>;
-template class EbsdLib_EXPORT EbsdDataArray<uint8_t>;
-
-template class EbsdLib_EXPORT EbsdDataArray<int16_t>;
-template class EbsdLib_EXPORT EbsdDataArray<uint16_t>;
-
-template class EbsdLib_EXPORT EbsdDataArray<int32_t>;
-template class EbsdLib_EXPORT EbsdDataArray<uint32_t>;
-
-template class EbsdLib_EXPORT EbsdDataArray<int64_t>;
-template class EbsdLib_EXPORT EbsdDataArray<uint64_t>;
-
-template class EbsdLib_EXPORT EbsdDataArray<float>;
-template class EbsdLib_EXPORT EbsdDataArray<double>;
-
-#if defined(__APPLE__) || defined(_MSC_VER)
-template class EbsdLib_EXPORT EbsdDataArray<size_t>;
-#endif
+//#if !defined(__APPLE__) && !defined(_MSC_VER)
+//#undef EbsdLib_EXPORT
+//#define EbsdLib_EXPORT
+//#endif
+//
+//template class EbsdLib_EXPORT EbsdDataArray<bool>;
+//
+//template class EbsdLib_EXPORT EbsdDataArray<char>;
+//
+//template class EbsdLib_EXPORT EbsdDataArray<int8_t>;
+//template class EbsdLib_EXPORT EbsdDataArray<uint8_t>;
+//
+//template class EbsdLib_EXPORT EbsdDataArray<int16_t>;
+//template class EbsdLib_EXPORT EbsdDataArray<uint16_t>;
+//
+//template class EbsdLib_EXPORT EbsdDataArray<int32_t>;
+//template class EbsdLib_EXPORT EbsdDataArray<uint32_t>;
+//
+//template class EbsdLib_EXPORT EbsdDataArray<int64_t>;
+//template class EbsdLib_EXPORT EbsdDataArray<uint64_t>;
+//
+//template class EbsdLib_EXPORT EbsdDataArray<float>;
+//template class EbsdLib_EXPORT EbsdDataArray<double>;
+//
+//#if defined(__APPLE__) || defined(_MSC_VER)
+//template class EbsdLib_EXPORT EbsdDataArray<size_t>;
+//#endif

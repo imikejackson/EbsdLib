@@ -55,8 +55,8 @@
 #endif
 
 #define OC_CLASS_DEFINES(name)                                                                                                                                                                         \
-  using DataArrayPointerType = typename DataArrayType::Pointer;                                                                                                                                        \
-  using Self = name<DataArrayType, T>;                                                                                                                                                                 \
+  using ContainerSharedPtr = std::shared_ptr<std::vector<T>>;                                                                                                                                       \
+  using Self = name<name, T>;                                                                                                                                                                 \
   using Pointer = std::shared_ptr<Self>;                                                                                                                                                               \
   static Pointer New()                                                                                                                                                                                 \
   {                                                                                                                                                                                                    \
@@ -76,9 +76,9 @@ template <class DataArrayType, typename T>
 class OrientationConverter
 {
 public:
-  using DataArrayPointerType = typename DataArrayType::Pointer;
+  using ContainerSharedPtr = typename std::shared_ptr<DataArrayType>;
   using Self = OrientationConverter<DataArrayType, T>;
-  using Pointer = std::shared_ptr<Self>;
+//  using Pointer = std::shared_ptr<Self>;
 
   virtual ~OrientationConverter() = default;
 
@@ -91,7 +91,7 @@ public:
    * @brief getOrientationRepresentation
    * @return
    */
-  OrientationRepresentation::Type getOrientationRepresentation()
+  virtual OrientationRepresentation::Type getOrientationRepresentation()
   {
     return OrientationRepresentation::Type::Unknown;
   }
@@ -186,11 +186,11 @@ public:
   /**
    * @brief Sets/Gets the input orientations
    */
-  void setInputData(DataArrayPointerType& input)
+  void setInputData(ContainerSharedPtr& input)
   {
     m_InputData = input;
   }
-  DataArrayPointerType getInputData() const
+  ContainerSharedPtr getInputData() const
   {
     return m_InputData;
   }
@@ -198,11 +198,11 @@ public:
   /**
    * @brief Sets/Gets the output orientations
    */
-  void setOutputData(DataArrayPointerType& output)
+  void setOutputData(ContainerSharedPtr& output)
   {
     m_OutputData = output;
   }
-  DataArrayPointerType getOutputData() const
+  ContainerSharedPtr getOutputData() const
   {
     return m_OutputData;
   }
@@ -288,8 +288,8 @@ public:
   OrientationConverter& operator=(OrientationConverter&&) = delete;      // Move Assignment Not Implemented
 
 private:
-  DataArrayPointerType m_InputData;
-  DataArrayPointerType m_OutputData;
+  ContainerSharedPtr m_InputData;
+  ContainerSharedPtr m_OutputData;
 };
 
 /**
@@ -462,31 +462,28 @@ private:
  */
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
 
-#define OC_CONVERT_BODY(OUTSTRIDE, OUT_ARRAY_NAME, CONVERSION_METHOD, FUNCTOR)                                                                                                                         \
+#define OC_CONVERT_BODY(INSTRIDE, OUTSTRIDE, OUT_ARRAY_NAME, CONVERSION_METHOD, FUNCTOR)                                                                                                                         \
   sanityCheckInputData();                                                                                                                                                                              \
-  DataArrayPointerType input = this->getInputData();                                                                                                                                                   \
-  T* inPtr = input->getPointer(0);                                                                                                                                                                     \
-  size_t nTuples = this->getInputData()->getNumberOfTuples();                                                                                                                                          \
-  int inStride = input->getNumberOfComponents();                                                                                                                                                       \
+  ContainerSharedPtr input = this->getInputData();                                                                                                                                                   \
+  T* inPtr = input->data();                                                                                                                                                                     \
+  size_t nTuples = input->size() / INSTRIDE;                                                                                                                                          \
   size_t outStride = OUTSTRIDE;                                                                                                                                                                        \
-  std::vector<size_t> cDims = {outStride};                                                                                                                                                             \
-  DataArrayPointerType output = DataArrayType::CreateArray(nTuples, cDims, #OUT_ARRAY_NAME, true);                                                                                                     \
-  output->initializeWithZeros(); /* Intialize the array with Zeros */                                                                                                                                  \
-  T* outPtr = output->getPointer(0);                                                                                                                                                                   \
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, nTuples), ConvertRepresentation<T, Convertors::FUNCTOR<T>>(inPtr, outPtr, inStride, outStride), tbb::auto_partitioner());                            \
+  ContainerSharedPtr output; output->resize (nTuples * outStride);                                                                                                     \
+  T* outPtr = output->data();                                                                                                                                                                   \
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, nTuples), ConvertRepresentation<T, Convertors::FUNCTOR<T>>(inPtr, outPtr, INSTRIDE, outStride), tbb::auto_partitioner());                            \
   this->setOutputData(output);
 
 #else
 
-#define OC_CONVERT_BODY(OUTSTRIDE, OUT_ARRAY_NAME, CONVERSION_METHOD, FUNCTOR)                                                                                                                         \
+#define OC_CONVERT_BODY(INSTRIDE, OUTSTRIDE, OUT_ARRAY_NAME, CONVERSION_METHOD, FUNCTOR)                                                                                                                         \
   sanityCheckInputData();                                                                                                                                                                              \
-  DataArrayPointerType input = this->getInputData();                                                                                                                                                   \
-  T* inPtr = input->getPointer(0);                                                                                                                                                                     \
+  ContainerSharedPtr input = this->getInputData();                                                                                                                                                   \
+  T* inPtr = input->data();                                                                                                                                                                     \
   size_t nTuples = this->getInputData()->getNumberOfTuples();                                                                                                                                          \
   int inStride = input->getNumberOfComponents();                                                                                                                                                       \
   size_t outStride = OUTSTRIDE;                                                                                                                                                                        \
   std::vector<size_t> cDims = {outStride}; /* Create the n component (nx1) based array.*/                                                                                                              \
-  DataArrayPointerType output = DataArrayType::CreateArray(nTuples, cDims, #OUT_ARRAY_NAME, true);                                                                                                     \
+  ContainerSharedPtr output = DataArrayType::CreateArray(nTuples, cDims, #OUT_ARRAY_NAME, true);                                                                                                     \
   output->initializeWithZeros(); /* Intialize the array with Zeros */                                                                                                                                  \
   T* outPtr = output->getPointer(0);                                                                                                                                                                   \
   ConvertRepresentation<T, Convertors::FUNCTOR<T>> serial(inPtr, outPtr, inStride, outStride);                                                                                                         \
@@ -558,69 +555,70 @@ class EulerConverter : public OrientationConverter<DataArrayType, T>
 public:
   OC_CLASS_DEFINES(EulerConverter)
 
-  virtual ~EulerConverter() = default;
 
-  OrientationRepresentation::Type getOrientationRepresentation()
+   ~EulerConverter() override = default;
+
+  OrientationRepresentation::Type getOrientationRepresentation() override
   {
     return OrientationRepresentation::Type::Euler;
   }
 
   void toEulers() override
   {
-    DataArrayPointerType input = this->getInputData();
-    DataArrayPointerType output = std::dynamic_pointer_cast<DataArrayType>(input->deepCopy());
+    ContainerSharedPtr input = this->getInputData();
+    ContainerSharedPtr output;
+    output->resize(input->size());
+    std::copy (input->begin(), input->end(), output->begin());
     this->setOutputData(output);
   }
 
   void toOrientationMatrix() override
   {
-    OC_CONVERT_BODY(9, OrientationMatrix, eu2om, Eu2Om)
+    OC_CONVERT_BODY(3, 9, OrientationMatrix, eu2om, Eu2Om)
   }
 
   void toQuaternion() override
   {
-    OC_CONVERT_BODY(4, Quaternion, eu2qu, Eu2Qu)
+    OC_CONVERT_BODY(3, 4, Quaternion, eu2qu, Eu2Qu)
   }
 
   void toAxisAngle() override
   {
-    OC_CONVERT_BODY(4, AxisAngle, eu2ax, Eu2Ax)
+    OC_CONVERT_BODY(3, 4, AxisAngle, eu2ax, Eu2Ax)
   }
 
   void toRodrigues() override
   {
-    OC_CONVERT_BODY(4, Rodrigues, eu2ro, Eu2Ro)
+    OC_CONVERT_BODY(3, 4, Rodrigues, eu2ro, Eu2Ro)
   }
 
   void toHomochoric() override
   {
-    OC_CONVERT_BODY(3, Homochoric, eu2ho, Eu2Ho)
+    OC_CONVERT_BODY(3, 3, Homochoric, eu2ho, Eu2Ho)
   }
 
   void toCubochoric() override
   {
-    OC_CONVERT_BODY(3, Cubochoric, eu2cu, Eu2Cu)
+    OC_CONVERT_BODY(3, 3, Cubochoric, eu2cu, Eu2Cu)
   }
 
   void sanityCheckInputData() override
   {
-    DataArrayPointerType input = this->getInputData();
-    T* inPtr = input->getPointer(0);
-    size_t nTuples = input->getNumberOfTuples();
-    int inStride = input->getNumberOfComponents();
+    ContainerSharedPtr input = this->getInputData();
+    T* inPtr = input->data();
+    int inStride = 3;
+    size_t nTuples = input->size() / inStride;
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
-    bool doParallel = true;
-    if(doParallel)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, nTuples), EulerSanityCheck<T>(inPtr, inStride), tbb::auto_partitioner());
     }
-    else
-#endif
+#else
     {
       EulerSanityCheck<T> serial(inPtr, inStride);
       serial.sanityCheck(0, nTuples);
     }
+#endif
   }
 
   /**
@@ -656,13 +654,10 @@ public:
     out << label << eu[0] << '\t' << eu[1] << '\t' << eu[2] << std::endl;
   }
 
-protected:
-  EulerConverter()
-  : OrientationConverter<DataArrayType, T>()
-  {
-  }
 
-  explicit EulerConverter(DataArrayPointerType data)
+  EulerConverter() = default;
+
+  explicit EulerConverter(ContainerSharedPtr data)
   : OrientationConverter<DataArrayType, T>()
   {
     this->setInputData(data);
@@ -743,9 +738,10 @@ class OrientationMatrixConverter : public OrientationConverter<DataArrayType, T>
 public:
   OC_CLASS_DEFINES(OrientationMatrixConverter)
 
+
   virtual ~OrientationMatrixConverter() = default;
 
-  OrientationRepresentation::Type getOrientationRepresentation()
+  OrientationRepresentation::Type getOrientationRepresentation() override
   {
     return OrientationRepresentation::Type::OrientationMatrix;
   }
@@ -753,65 +749,63 @@ public:
   void toEulers() override
   {
     sanityCheckInputData();
-    OC_CONVERT_BODY(3, Eulers, om2eu, Om2Eu)
+    OC_CONVERT_BODY(9, 3, Eulers, om2eu, Om2Eu)
   }
 
   void toOrientationMatrix() override
   {
-    DataArrayPointerType input = this->getInputData();
-    DataArrayPointerType output = std::dynamic_pointer_cast<DataArrayType>(input->deepCopy());
+    ContainerSharedPtr input = this->getInputData();
+    ContainerSharedPtr output; output->resize (input->size());
+    std::copy (input->begin(), input->end(), output->begin());
     this->setOutputData(output);
   }
 
   void toQuaternion() override
   {
     sanityCheckInputData();
-    OC_CONVERT_BODY(4, Quaternion, om2qu, Om2Qu)
+    OC_CONVERT_BODY(9, 4, Quaternion, om2qu, Om2Qu)
   }
 
   void toAxisAngle() override
   {
     sanityCheckInputData();
-    OC_CONVERT_BODY(4, AxisAngle, om2ax, Om2Ax)
+    OC_CONVERT_BODY(9, 4, AxisAngle, om2ax, Om2Ax)
   }
 
   void toRodrigues() override
   {
     sanityCheckInputData();
-    OC_CONVERT_BODY(4, Rodrigues, om2ro, Om2Ro)
+    OC_CONVERT_BODY(9, 4, Rodrigues, om2ro, Om2Ro)
   }
 
   void toHomochoric() override
   {
     sanityCheckInputData();
-    OC_CONVERT_BODY(3, Homochoric, om2ho, Om2Ho)
+    OC_CONVERT_BODY(9, 3, Homochoric, om2ho, Om2Ho)
   }
 
   void toCubochoric() override
   {
     sanityCheckInputData();
-    OC_CONVERT_BODY(3, Cubochoric, om2cu, Om2Cu)
+    OC_CONVERT_BODY(9, 3, Cubochoric, om2cu, Om2Cu)
   }
 
   void sanityCheckInputData() override
   {
-    DataArrayPointerType input = this->getInputData();
-    T* inPtr = input->getPointer(0);
-    size_t nTuples = input->getNumberOfTuples();
-    int inStride = input->getNumberOfComponents();
+    ContainerSharedPtr input = this->getInputData();
+    T* inPtr = input->data();
+    size_t inStride = 9; size_t nTuples = input->size() / inStride;
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
-    bool doParallel = true;
-    if(doParallel)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, nTuples), OrientationMatrixSanityCheck<T>(inPtr, inStride), tbb::auto_partitioner());
     }
-    else
-#endif
+#else
     {
       OrientationMatrixSanityCheck<T> serial(inPtr, inStride);
       serial.sanityCheck(0, nTuples);
     }
+#endif
   }
 
   /**
@@ -849,12 +843,9 @@ public:
     out << label << om[6] << '\t' << om[7] << '\t' << om[8] << std::endl;
   }
 
-protected:
-  OrientationMatrixConverter()
-  : OrientationConverter<DataArrayType, T>()
-  {
-  }
-  explicit OrientationMatrixConverter(DataArrayPointerType data)
+  OrientationMatrixConverter() = default;
+
+  explicit OrientationMatrixConverter(ContainerSharedPtr data)
   : OrientationConverter<DataArrayType, T>()
   {
     this->setInputData(data);
@@ -909,49 +900,50 @@ class QuaternionConverter : public OrientationConverter<DataArrayType, T>
 public:
   OC_CLASS_DEFINES(QuaternionConverter)
 
+
   virtual ~QuaternionConverter() = default;
 
-  OrientationRepresentation::Type getOrientationRepresentation()
+  OrientationRepresentation::Type getOrientationRepresentation()override
   {
     return OrientationRepresentation::Type::Quaternion;
   }
 
   void toEulers() override
   {
-    OC_CONVERT_BODY(3, Eulers, qu2eu, Qu2Eu)
+    OC_CONVERT_BODY(4, 3, Eulers, qu2eu, Qu2Eu)
   }
 
   void toOrientationMatrix() override
   {
-    OC_CONVERT_BODY(9, OrientationMatrix, qu2om, Qu2Om)
+    OC_CONVERT_BODY(4, 9, OrientationMatrix, qu2om, Qu2Om)
   }
 
   void toQuaternion() override
   {
-    using PointerType = DataArrayPointerType;
-    PointerType input = this->getInputData();
-    PointerType output = std::dynamic_pointer_cast<DataArrayType>(input->deepCopy());
+    ContainerSharedPtr input = this->getInputData();
+    ContainerSharedPtr output; output->resize (input->size());
+    std::copy (input->begin(), input->end(), output->begin());
     this->setOutputData(output);
   }
 
   void toAxisAngle() override
   {
-    OC_CONVERT_BODY(4, AxisAngle, qu2ax, Qu2Ax)
+    OC_CONVERT_BODY(4, 4, AxisAngle, qu2ax, Qu2Ax)
   }
 
   void toRodrigues() override
   {
-    OC_CONVERT_BODY(4, Rodrigues, qu2ro, Qu2Ro)
+    OC_CONVERT_BODY(4, 4, Rodrigues, qu2ro, Qu2Ro)
   }
 
   void toHomochoric() override
   {
-    OC_CONVERT_BODY(3, Homochoric, qu2ho, Qu2Ho)
+    OC_CONVERT_BODY(4, 3, Homochoric, qu2ho, Qu2Ho)
   }
 
   void toCubochoric() override
   {
-    OC_CONVERT_BODY(3, Cubochoric, qu2cu, Qu2Cu)
+    OC_CONVERT_BODY(4, 3, Cubochoric, qu2cu, Qu2Cu)
   }
 
   void sanityCheckInputData() override
@@ -961,8 +953,8 @@ public:
      * go
      */
 #if 0
-      DataArrayPointerType input = this->getInputData();
-      T* inPtr = input->getPointer(0);
+      ContainerSharedPtr input = this->getInputData();
+      T* inPtr = input->data();
       size_t nTuples = input->getNumberOfTuples();
       int inStride = input->getNumberOfComponents();
 
@@ -1008,12 +1000,9 @@ public:
     return close;
   }
 
-protected:
-  QuaternionConverter()
-  : OrientationConverter<DataArrayType, T>()
-  {
-  }
-  explicit QuaternionConverter(DataArrayPointerType data)
+  QuaternionConverter() = default;
+
+  explicit QuaternionConverter(ContainerSharedPtr data)
   : OrientationConverter<DataArrayType, T>()
   {
     this->setInputData(data);
@@ -1067,49 +1056,50 @@ class AxisAngleConverter : public OrientationConverter<DataArrayType, T>
 public:
   OC_CLASS_DEFINES(AxisAngleConverter)
 
+
   virtual ~AxisAngleConverter() = default;
 
-  OrientationRepresentation::Type getOrientationRepresentation()
+  OrientationRepresentation::Type getOrientationRepresentation()override
   {
     return OrientationRepresentation::Type::AxisAngle;
   }
 
   void toEulers() override
   {
-    OC_CONVERT_BODY(3, Eulers, ax2eu, Ax2Eu)
+    OC_CONVERT_BODY(4, 3, Eulers, ax2eu, Ax2Eu)
   }
 
   void toOrientationMatrix() override
   {
-    OC_CONVERT_BODY(9, OrientationMatrix, ax2om, Ax2Om)
+    OC_CONVERT_BODY(4, 9, OrientationMatrix, ax2om, Ax2Om)
   }
 
   void toQuaternion() override
   {
-    OC_CONVERT_BODY(4, Quaternions, ax2qu, Ax2Qu)
+    OC_CONVERT_BODY(4, 4, Quaternions, ax2qu, Ax2Qu)
   }
 
   void toAxisAngle() override
   {
-    using PointerType = DataArrayPointerType;
-    PointerType input = this->getInputData();
-    PointerType output = std::dynamic_pointer_cast<DataArrayType>(input->deepCopy());
+    ContainerSharedPtr input = this->getInputData();
+    ContainerSharedPtr output; output->resize (input->size());
+    std::copy (input->begin(), input->end(), output->begin());
     this->setOutputData(output);
   }
 
   void toRodrigues() override
   {
-    OC_CONVERT_BODY(4, Rodrigues, ax2ro, Ax2Ro)
+    OC_CONVERT_BODY(4, 4, Rodrigues, ax2ro, Ax2Ro)
   }
 
   void toHomochoric() override
   {
-    OC_CONVERT_BODY(3, Homochoric, ax2ho, Ax2Ho)
+    OC_CONVERT_BODY(4, 3, Homochoric, ax2ho, Ax2Ho)
   }
 
   void toCubochoric() override
   {
-    OC_CONVERT_BODY(3, Cubochoric, ax2cu, Ax2Cu)
+    OC_CONVERT_BODY(4, 3, Cubochoric, ax2cu, Ax2Cu)
   }
 
   void sanityCheckInputData() override
@@ -1119,8 +1109,8 @@ public:
      * go
      */
 #if 0
-      DataArrayPointerType input = this->getInputData();
-      T* inPtr = input->getPointer(0);
+      ContainerSharedPtr input = this->getInputData();
+      T* inPtr = input->data();
       size_t nTuples = input->getNumberOfTuples();
       int inStride = input->getNumberOfComponents();
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
@@ -1165,13 +1155,8 @@ public:
     out << label << "<" << ax[0] << '\t' << ax[1] << '\t' << ax[2] << ">\t" << ax[3] << std::endl;
   }
 
-protected:
-  AxisAngleConverter()
-  : OrientationConverter<DataArrayType, T>()
-  {
-  }
-
-  explicit AxisAngleConverter(DataArrayPointerType data)
+  AxisAngleConverter() = default;
+  explicit AxisAngleConverter(ContainerSharedPtr data)
   : OrientationConverter<DataArrayType, T>()
   {
     this->setInputData(data);
@@ -1226,49 +1211,50 @@ class RodriguesConverter : public OrientationConverter<DataArrayType, T>
 public:
   OC_CLASS_DEFINES(RodriguesConverter)
 
+
   virtual ~RodriguesConverter() = default;
 
-  OrientationRepresentation::Type getOrientationRepresentation()
+  OrientationRepresentation::Type getOrientationRepresentation()override
   {
     return OrientationRepresentation::Type::Rodrigues;
   }
 
   void toEulers() override
   {
-    OC_CONVERT_BODY(3, Eulers, ro2eu, Ro2Eu)
+    OC_CONVERT_BODY(4, 3, Eulers, ro2eu, Ro2Eu)
   }
 
   void toOrientationMatrix() override
   {
-    OC_CONVERT_BODY(9, OrientationMatrix, ro2om, Ro2Om)
+    OC_CONVERT_BODY(4, 9, OrientationMatrix, ro2om, Ro2Om)
   }
 
   void toQuaternion() override
   {
-    OC_CONVERT_BODY(4, Quaternions, ro2qu, Ro2Qu)
+    OC_CONVERT_BODY(4, 4, Quaternions, ro2qu, Ro2Qu)
   }
 
   void toAxisAngle() override
   {
-    OC_CONVERT_BODY(4, AxisAngle, ro2ax, Ro2Ax)
+    OC_CONVERT_BODY(4, 4, AxisAngle, ro2ax, Ro2Ax)
   }
 
   void toRodrigues() override
   {
-    using PointerType = DataArrayPointerType;
-    PointerType input = this->getInputData();
-    PointerType output = std::dynamic_pointer_cast<DataArrayType>(input->deepCopy());
+    ContainerSharedPtr input = this->getInputData();
+    ContainerSharedPtr output; output->resize (input->size());
+    std::copy (input->begin(), input->end(), output->begin());
     this->setOutputData(output);
   }
 
   void toHomochoric() override
   {
-    OC_CONVERT_BODY(3, Homochoric, ro2ho, Ro2Ho)
+    OC_CONVERT_BODY(4, 3, Homochoric, ro2ho, Ro2Ho)
   }
 
   void toCubochoric() override
   {
-    OC_CONVERT_BODY(3, Cubochoric, ro2cu, Ro2Cu)
+    OC_CONVERT_BODY(4, 3, Cubochoric, ro2cu, Ro2Cu)
   }
 
   void sanityCheckInputData() override
@@ -1278,8 +1264,8 @@ public:
      * go
      */
 #if 0
-      DataArrayPointerType input = this->getInputData();
-      T* inPtr = input->getPointer(0);
+      ContainerSharedPtr input = this->getInputData();
+      T* inPtr = input->data();
       size_t nTuples = input->getNumberOfTuples();
       int inStride = input->getNumberOfComponents();
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
@@ -1324,13 +1310,8 @@ public:
     out << label << ro[0] << '\t' << ro[1] << '\t' << ro[2] << "\t" << ro[3] << std::endl;
   }
 
-protected:
-  RodriguesConverter()
-  : OrientationConverter<DataArrayType, T>()
-  {
-  }
-
-  explicit RodriguesConverter(DataArrayPointerType data)
+  RodriguesConverter() = default;
+  explicit RodriguesConverter(ContainerSharedPtr data)
   : OrientationConverter<DataArrayType, T>()
   {
     this->setInputData(data);
@@ -1385,49 +1366,50 @@ class HomochoricConverter : public OrientationConverter<DataArrayType, T>
 public:
   OC_CLASS_DEFINES(HomochoricConverter)
 
+
   virtual ~HomochoricConverter() = default;
 
-  OrientationRepresentation::Type getOrientationRepresentation()
+  OrientationRepresentation::Type getOrientationRepresentation()override
   {
     return OrientationRepresentation::Type::Homochoric;
   }
 
   void toEulers() override
   {
-    OC_CONVERT_BODY(3, Eulers, ho2eu, Ho2Eu)
+    OC_CONVERT_BODY(3, 3, Eulers, ho2eu, Ho2Eu)
   }
 
   void toOrientationMatrix() override
   {
-    OC_CONVERT_BODY(9, OrientationMatrix, ho2om, Ho2Om)
+    OC_CONVERT_BODY(3, 9, OrientationMatrix, ho2om, Ho2Om)
   }
 
   void toQuaternion() override
   {
-    OC_CONVERT_BODY(4, Quaternions, ho2qu, Ho2Qu)
+    OC_CONVERT_BODY(3, 4, Quaternions, ho2qu, Ho2Qu)
   }
 
   void toAxisAngle() override
   {
-    OC_CONVERT_BODY(4, AxisAngle, ho2ax, Ho2Ax)
+    OC_CONVERT_BODY(3, 4, AxisAngle, ho2ax, Ho2Ax)
   }
 
   void toRodrigues() override
   {
-    OC_CONVERT_BODY(4, Rodrigues, ho2ro, Ho2Ro)
+    OC_CONVERT_BODY(3, 4, Rodrigues, ho2ro, Ho2Ro)
   }
 
   void toHomochoric() override
   {
-    using PointerType = DataArrayPointerType;
-    PointerType input = this->getInputData();
-    PointerType output = std::dynamic_pointer_cast<DataArrayType>(input->deepCopy());
+    ContainerSharedPtr input = this->getInputData();
+    ContainerSharedPtr output; output->resize (input->size());
+    std::copy (input->begin(), input->end(), output->begin());
     this->setOutputData(output);
   }
 
   void toCubochoric() override
   {
-    OC_CONVERT_BODY(3, Cubochoric, ho2cu, Ho2Cu)
+    OC_CONVERT_BODY(3, 3, Cubochoric, ho2cu, Ho2Cu)
   }
 
   void sanityCheckInputData() override
@@ -1437,8 +1419,8 @@ public:
      * go
      */
 #if 0
-      DataArrayPointerType input = this->getInputData();
-      T* inPtr = input->getPointer(0);
+      ContainerSharedPtr input = this->getInputData();
+      T* inPtr = input->data();
       size_t nTuples = input->getNumberOfTuples();
       int inStride = input->getNumberOfComponents();
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
@@ -1484,13 +1466,9 @@ public:
     out << label << ho[0] << '\t' << ho[1] << '\t' << ho[2] << std::endl;
   }
 
-protected:
-  HomochoricConverter()
-  : OrientationConverter<DataArrayType, T>()
-  {
-  }
+  HomochoricConverter() = default;
 
-  explicit HomochoricConverter(DataArrayPointerType data)
+  explicit HomochoricConverter(ContainerSharedPtr data)
   : OrientationConverter<DataArrayType, T>()
   {
     this->setInputData(data);
@@ -1545,48 +1523,49 @@ class CubochoricConverter : public OrientationConverter<DataArrayType, T>
 public:
   OC_CLASS_DEFINES(CubochoricConverter)
 
+
   virtual ~CubochoricConverter() = default;
 
-  OrientationRepresentation::Type getOrientationRepresentation()
+  OrientationRepresentation::Type getOrientationRepresentation()override
   {
     return OrientationRepresentation::Type::Cubochoric;
   }
 
   void toEulers() override
   {
-    OC_CONVERT_BODY(3, Eulers, cu2eu, Cu2Eu)
+    OC_CONVERT_BODY(3, 3, Eulers, cu2eu, Cu2Eu)
   }
 
   void toOrientationMatrix() override
   {
-    OC_CONVERT_BODY(9, OrientationMatrix, cu2om, Cu2Om)
+    OC_CONVERT_BODY(3, 9, OrientationMatrix, cu2om, Cu2Om)
   }
 
   void toQuaternion() override
   {
-    OC_CONVERT_BODY(4, Quaternions, cu2qu, Cu2Qu)
+    OC_CONVERT_BODY(3, 4, Quaternions, cu2qu, Cu2Qu)
   }
 
   void toAxisAngle() override
   {
-    OC_CONVERT_BODY(4, AxisAngle, cu2ax, Cu2Ax)
+    OC_CONVERT_BODY(3, 4, AxisAngle, cu2ax, Cu2Ax)
   }
 
   void toRodrigues() override
   {
-    OC_CONVERT_BODY(4, Rodrigues, cu2ro, Cu2Ro)
+    OC_CONVERT_BODY(3, 4, Rodrigues, cu2ro, Cu2Ro)
   }
 
   void toHomochoric() override
   {
-    OC_CONVERT_BODY(3, Homochoric, cu2ho, Cu2Ho)
+    OC_CONVERT_BODY(3, 3, Homochoric, cu2ho, Cu2Ho)
   }
 
   void toCubochoric() override
   {
-    using PointerType = DataArrayPointerType;
-    PointerType input = this->getInputData();
-    PointerType output = std::dynamic_pointer_cast<DataArrayType>(input->deepCopy());
+    ContainerSharedPtr input = this->getInputData();
+    ContainerSharedPtr output; output->resize (input->size());
+    std::copy (input->begin(), input->end(), output->begin());
     this->setOutputData(output);
   }
 
@@ -1597,8 +1576,8 @@ public:
      * go
      */
 #if 0
-      DataArrayPointerType input = this->getInputData();
-      T* inPtr = input->getPointer(0);
+      ContainerSharedPtr input = this->getInputData();
+      T* inPtr = input->data();
       size_t nTuples = input->getNumberOfTuples();
       int inStride = input->getNumberOfComponents();
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
@@ -1643,13 +1622,9 @@ public:
     out << label << cu[0] << '\t' << cu[1] << '\t' << cu[2] << std::endl;
   }
 
-protected:
-  CubochoricConverter()
-  : OrientationConverter<DataArrayType, T>()
-  {
-  }
+  CubochoricConverter() = default;
 
-  explicit CubochoricConverter(DataArrayPointerType data)
+  explicit CubochoricConverter(ContainerSharedPtr data)
   : OrientationConverter<DataArrayType, T>()
   {
     this->setInputData(data);

@@ -66,9 +66,9 @@ AngleFileLoader::~AngleFileLoader() = default;
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-EbsdLib::FloatArrayType::Pointer AngleFileLoader::loadData()
+EbsdLib::FloatArrayType AngleFileLoader::loadData()
 {
-  EbsdLib::FloatArrayType::Pointer angles = EbsdLib::FloatArrayType::NullPointer();
+  EbsdLib::FloatArrayType angles;
 
   // Make sure the input file variable is not empty
   if(m_InputFile.empty())
@@ -144,7 +144,7 @@ EbsdLib::FloatArrayType::Pointer AngleFileLoader::loadData()
 
   // Allocate enough for the angles
   std::vector<size_t> dims(1, 5);
-  angles = EbsdLib::FloatArrayType::CreateArray(numOrients, dims, "EulerAngles_From_File", true);
+  angles = EbsdLib::FloatArrayType(numOrients * 5);
 
   for(int i = 0; i < numOrients; i++)
   {
@@ -219,11 +219,11 @@ EbsdLib::FloatArrayType::Pointer AngleFileLoader::loadData()
     }
 
     // Store the values into our array
-    angles->setComponent(i, 0, euler[0]);
-    angles->setComponent(i, 1, euler[1]);
-    angles->setComponent(i, 2, euler[2]);
-    angles->setComponent(i, 3, weight);
-    angles->setComponent(i, 4, sigma);
+    angles[i * 5 + 0] = euler[0];
+    angles[i * 5 + 1] = euler[1];
+    angles[i * 5 + 2] = euler[2];
+    angles[i * 5 + 3] = weight;
+    angles[i * 5 + 4] = sigma;
     //   std::cout << "reading line: " << i ;
   }
 

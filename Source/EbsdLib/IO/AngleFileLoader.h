@@ -167,7 +167,11 @@ public:
    */
   bool getIgnoreMultipleDelimiters() const;
 
-  EbsdLib::FloatArrayType::Pointer loadData();
+  /**
+   * @brief
+   * @return
+   */
+  EbsdLib::FloatArrayType loadData();
 
 protected:
   AngleFileLoader();

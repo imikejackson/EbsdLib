@@ -9,26 +9,26 @@
 #include "EbsdLib/OrientationMath/OrientationConverter.hpp"
 #include "EbsdLib/Utilities/EbsdStringUtils.hpp"
 
-using EbsdDoubleArrayType = EbsdDataArray<double>;
-using EbsdDoubleArrayPointerType = EbsdDoubleArrayType::Pointer;
-using OCType = OrientationConverter<EbsdLib::DoubleArrayType, float>;
+//using EbsdDoubleArrayType = EbsdDataArray<double>;
+//using EbsdDoubleArrayPointerType = EbsdDoubleArrayType::Pointer;
+//using OCType = OrientationConverter<EbsdLib::DoubleArrayType, float>;
 
 // -----------------------------------------------------------------------------
-template <typename T>
-std::shared_ptr<EbsdDataArray<T>> generateRepresentation(int32_t inputType, int32_t outputType, typename EbsdDataArray<T>::Pointer inputOrientations)
+template <typename ContainerType, typename T>
+std::shared_ptr<ContainerType> generateRepresentation(int32_t inputType, int32_t outputType, std::shared_ptr<ContainerType> inputOrientations, size_t inStride)
 {
-  // using ArrayType = typename EbsdDataArray<T>::Pointer;
-  using OCType = OrientationConverter<EbsdDataArray<T>, T>;
+  using OCType = OrientationConverter<ContainerType, T>;
+  using OCSharedType = std::shared_ptr<OCType>;
 
-  std::vector<typename OCType::Pointer> converters(7);
+  std::vector<OCSharedType> converters(7);
 
-  converters[0] = EulerConverter<EbsdDataArray<T>, T>::New();
-  converters[1] = OrientationMatrixConverter<EbsdDataArray<T>, T>::New();
-  converters[2] = QuaternionConverter<EbsdDataArray<T>, T>::New();
-  converters[3] = AxisAngleConverter<EbsdDataArray<T>, T>::New();
-  converters[4] = RodriguesConverter<EbsdDataArray<T>, T>::New();
-  converters[5] = HomochoricConverter<EbsdDataArray<T>, T>::New();
-  converters[6] = CubochoricConverter<EbsdDataArray<T>, T>::New();
+  converters[0] = std::shared_ptr<EulerConverter<ContainerType, T>>(new EulerConverter<ContainerType, T>);
+  converters[1] = std::shared_ptr<OrientationMatrixConverter<ContainerType, T>>(new OrientationMatrixConverter<ContainerType, T>);
+  converters[2] = std::shared_ptr<QuaternionConverter<ContainerType, T>>(new QuaternionConverter<ContainerType, T>);
+  converters[3] = std::shared_ptr<AxisAngleConverter<ContainerType, T>>(new AxisAngleConverter<ContainerType, T>);
+  converters[4] = std::shared_ptr<RodriguesConverter<ContainerType, T>>(new RodriguesConverter<ContainerType, T>);
+  converters[5] = std::shared_ptr<HomochoricConverter<ContainerType, T>>(new HomochoricConverter<ContainerType, T>);
+  converters[6] = std::shared_ptr<CubochoricConverter<ContainerType, T>>(new CubochoricConverter<ContainerType, T>);
 
   std::vector<OrientationRepresentation::Type> ocTypes = OCType::GetOrientationTypes();
 
@@ -77,7 +77,13 @@ public:
       return;
     }
 
-    std::vector<double> orientations;
+    using FloatType = double;
+    using VectorType = std::vector<FloatType>;
+    using SharedVectorPtr = std::shared_ptr<VectorType>;
+
+    SharedVectorPtr orientationsPtr;
+    VectorType& orientations = *orientationsPtr;
+
     char delim = delimiter.at(0);
     std::string buf;
     // Scan the file to figure out about how many values will be in the file
@@ -111,14 +117,14 @@ public:
       }
     }
     in.close();
-
+    using OCType = OrientationConverter<VectorType, FloatType>;
     std::vector<int> strides = OCType::GetComponentCounts<std::vector<int>>();
 
-    size_t numTuples = orientations.size() / strides[fromType];
-    std::vector<size_t> cDims = {static_cast<size_t>(strides[fromType])};
-    EbsdDoubleArrayPointerType inputOrientations = EbsdDoubleArrayType::WrapPointer(orientations.data(), numTuples, cDims, "Input", false);
+//    size_t numTuples = orientations.size() / strides[fromType];
+//    std::vector<size_t> cDims = {static_cast<size_t>(strides[fromType])};
+//    EbsdDoubleArrayPointerType inputOrientations = EbsdDoubleArrayType::WrapPointer(orientations.data(), numTuples, cDims, "Input", false);
 
-    EbsdDoubleArrayPointerType outputOrientations = generateRepresentation<double>(fromType, toType, inputOrientations);
+    SharedVectorPtr outputOrientations = generateRepresentation<VectorType, FloatType>(fromType, toType, orientationsPtr, strides[fromType]);
 
     std::ofstream outFile(outputFile, std::ios_base::out);
     if(!outFile.is_open())
@@ -127,9 +133,18 @@ public:
       return;
     }
 
+    size_t numComps = strides[toType];
+    size_t numTuples = outputOrientations->size() / numComps;
     for(size_t i = 0; i < numTuples; i++)
     {
-      outputOrientations->printTuple(outFile, i, delim);
+      for(size_t c = 0; c < numComps; c++)
+      {
+        outFile << outputOrientations->at(i * numComps + c);
+        if(c < numComps -1)
+        {
+          outFile << delim;
+        }
+      }
       outFile << std::endl;
     }
     outFile.close();

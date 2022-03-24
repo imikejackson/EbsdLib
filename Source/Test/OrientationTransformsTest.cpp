@@ -79,6 +79,12 @@ public:
   std::vector<std::string> DataSetNames;
   std::vector<int32_t> DataSetTypes;
 
+  using FloatType = double;
+  using VectorType = std::vector<FloatType >;
+  using EbsdDataArrayType = std::vector<FloatType>;
+  using EbsdDataArrayPointerType =std::shared_ptr<EbsdDataArrayType>;
+  using SharedVectorPtr = std::shared_ptr<VectorType>;
+
   EBSD_GET_NAME_OF_CLASS_DECL(OrientationTransformsTest)
 
   // -----------------------------------------------------------------------------
@@ -195,23 +201,21 @@ public:
   }
 
   // -----------------------------------------------------------------------------
-  //
-  // -----------------------------------------------------------------------------
-  template <typename T>
-  std::shared_ptr<EbsdDataArray<T>> generateRepresentation(int32_t inputType, int32_t outputType, typename EbsdDataArray<T>::Pointer inputOrientations)
+  template <typename ContainerType, typename T>
+  std::shared_ptr<ContainerType> generateRepresentation(int32_t inputType, int32_t outputType, std::shared_ptr<ContainerType> inputOrientations, size_t inStride)
   {
-    // using ArrayType = typename EbsdDataArray<T>::Pointer;
-    using OCType = OrientationConverter<EbsdDataArray<T>, T>;
+    using OCType = OrientationConverter<ContainerType, T>;
+    using OCSharedType = std::shared_ptr<OCType>;
 
-    std::vector<typename OCType::Pointer> converters(7);
+    std::vector<OCSharedType> converters(7);
 
-    converters[0] = EulerConverter<EbsdDataArray<T>, T>::New();
-    converters[1] = OrientationMatrixConverter<EbsdDataArray<T>, T>::New();
-    converters[2] = QuaternionConverter<EbsdDataArray<T>, T>::New();
-    converters[3] = AxisAngleConverter<EbsdDataArray<T>, T>::New();
-    converters[4] = RodriguesConverter<EbsdDataArray<T>, T>::New();
-    converters[5] = HomochoricConverter<EbsdDataArray<T>, T>::New();
-    converters[6] = CubochoricConverter<EbsdDataArray<T>, T>::New();
+    converters[0] = std::shared_ptr<EulerConverter<ContainerType, T>>(new EulerConverter<ContainerType, T>);
+    converters[1] = std::shared_ptr<OrientationMatrixConverter<ContainerType, T>>(new OrientationMatrixConverter<ContainerType, T>);
+    converters[2] = std::shared_ptr<QuaternionConverter<ContainerType, T>>(new QuaternionConverter<ContainerType, T>);
+    converters[3] = std::shared_ptr<AxisAngleConverter<ContainerType, T>>(new AxisAngleConverter<ContainerType, T>);
+    converters[4] = std::shared_ptr<RodriguesConverter<ContainerType, T>>(new RodriguesConverter<ContainerType, T>);
+    converters[5] = std::shared_ptr<HomochoricConverter<ContainerType, T>>(new HomochoricConverter<ContainerType, T>);
+    converters[6] = std::shared_ptr<CubochoricConverter<ContainerType, T>>(new CubochoricConverter<ContainerType, T>);
 
     std::vector<OrientationRepresentation::Type> ocTypes = OCType::GetOrientationTypes();
 
@@ -224,7 +228,7 @@ public:
   // -----------------------------------------------------------------------------
   //
   // -----------------------------------------------------------------------------
-  std::string ExecuteConvertFilter(std::map<std::string, EbsdDataArray<double>::Pointer>& attrMat, GenerateFunctionList::EntryType& entry, int e, const std::string& outputName)
+  std::string ExecuteConvertFilter(std::map<std::string, EbsdDataArrayPointerType>& attrMat, GenerateFunctionList::EntryType& entry, int e, const std::string& outputName)
   {
     std::string inputName = outputName;
 
@@ -232,8 +236,9 @@ public:
     {
       inputName = k_InputNames[entry[e]];
     }
-    EbsdDataArray<double>::Pointer inputData = attrMat[inputName];
-    EbsdDataArray<double>::Pointer outputData = generateRepresentation<double>(entry[e], entry[e + 1], inputData);
+
+    EbsdDataArrayPointerType inputData = attrMat[inputName];
+    EbsdDataArrayPointerType outputData = generateRepresentation<VectorType, double>(entry[e], entry[e + 1], inputData);
     std::string nextOutputName = EbsdStringUtils::number(e) + std::string("_") + k_InputNames[entry[e]] + std::string("2") + k_InputNames[entry[e + 1]];
     attrMat[nextOutputName] = outputData;
 
@@ -290,10 +295,6 @@ public:
   template <typename K>
   void RunTestCase(GenerateFunctionList::EntryType& entryRef, size_t nSteps)
   {
-
-    using EbsdDataArrayType = EbsdDataArray<K>;
-    using EbsdDataArrayPointerType = typename EbsdDataArrayType::Pointer;
-
     std::map<std::string, EbsdDataArrayPointerType> attrMat;
 
     try
@@ -414,19 +415,19 @@ public:
               // cDims[0] = k_CompDims[0];
               EbsdDataArrayPointerType data = attrMat[k_InputNames[0]];
               OrientationPrinters::PrintTuple<EbsdDataArrayType>(data, t);
-              CheckRepresentation<K>(data->getPointer(t), 0);
+              CheckRepresentation<K>(data->data() + (t), 0);
 
               // Print the starting representation
               data = attrMat[k_InputNames[entry[0]]];
               OrientationPrinters::PrintTuple<EbsdDataArrayType>(data, t);
-              CheckRepresentation<K>(data->getPointer(t), entry[0]);
+              CheckRepresentation<K>(data->data() + (t), entry[0]);
 
               // Now print all the intermediate Representations
               for(int q = 0; q < DataSetNames.size(); q++)
               {
                 data = attrMat[DataSetNames[q]];
                 OrientationPrinters::PrintTuple<EbsdDataArrayType>(data, t);
-                CheckRepresentation<K>(data->getPointer(t), DataSetTypes[q]);
+                CheckRepresentation<K>(data->data() + (t), DataSetTypes[q]);
               }
 
               DREAM3D_REQUIRED(delta, <=, thr)
@@ -517,7 +518,7 @@ public:
         //             )
         {
           // RunTestCase<float>(entry, 16);
-          RunTestCase<double>(entry, 16);
+          RunTestCase<FloatType>(entry, 16);
         }
       }
     }
@@ -539,7 +540,7 @@ public:
         //             )
         {
           //  RunTestCase<float>(entry, 16);
-          RunTestCase<double>(entry, 16);
+          RunTestCase<FloatType>(entry, 16);
         }
       }
     }

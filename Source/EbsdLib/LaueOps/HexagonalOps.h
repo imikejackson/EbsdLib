@@ -158,7 +158,7 @@ public:
   double getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bool maxSF) const override;
   double getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool maxSF) const override;
 
-  void generateSphereCoordsFromEulers(EbsdLib::FloatArrayType* eulers, EbsdLib::FloatArrayType* c1, EbsdLib::FloatArrayType* c2, EbsdLib::FloatArrayType* c3) const override;
+  void generateSphereCoordsFromEulers(EbsdLib::FloatArrayType& eulers, EbsdLib::FloatArrayType& c1, EbsdLib::FloatArrayType& c2, EbsdLib::FloatArrayType& c3) const override;
 
   /**
    * @brief generateIPFColor Generates an RGB Color from a Euler Angle and Reference Direction
@@ -208,13 +208,13 @@ public:
    * @return A std::vector of EbsdLib::UInt8ArrayType pointers where each one represents a 2D RGB array that can be used to initialize
    * an image object from other libraries and written out to disk.
    */
-  std::vector<EbsdLib::UInt8ArrayType::Pointer> generatePoleFigure(PoleFigureConfiguration_t& config) const override;
+  std::vector<EbsdLib::UInt8ArrayType> generatePoleFigure(PoleFigureConfiguration_t& config) const override;
 
   /**
    * @brief generateStandardTriangle Generates an RGBA array that is a color "Standard" IPF Triangle Legend used for IPF Color Maps.
    * @return
    */
-  EbsdLib::UInt8ArrayType::Pointer generateIPFTriangleLegend(int imageDim) const;
+  EbsdLib::UInt8ArrayType generateIPFTriangleLegend(int imageDim) const;
 
 protected:
 public:

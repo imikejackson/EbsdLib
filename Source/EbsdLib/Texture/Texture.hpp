@@ -88,8 +88,8 @@ public:
     LaueOps ops;
     std::array<size_t, 3> odfNumBins = ops.getOdfNumBins();
     odf.resize(ops.getODFSize());
-    EbsdLib::Int32ArrayType::Pointer textureBins = EbsdLib::Int32ArrayType::CreateArray(numEntries, "TextureBins", true);
-    int32_t* TextureBins = textureBins->getPointer(0);
+    EbsdLib::Int32ArrayType textureBins(numEntries);
+    int32_t* TextureBins = textureBins.data();
 
     float addweight = 0;
     float totaladdweight = 0;

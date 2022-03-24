@@ -419,7 +419,7 @@ public:
    * @param i The index to return the pointer to.
    * @return The pointer to the index
    */
-  T* getPointer(size_t i) const;
+  //T* getPointer(size_t i) const;
 
   /**
    * @brief Returns the value for a given index
@@ -1225,29 +1225,22 @@ extern template class EbsdDataArray<double>;
 
 extern template class EbsdDataArray<size_t>;
 
+#define EbsdLib_Use_Vectors 1
 // -----------------------------------------------------------------------------
 // Declare our aliases
 namespace EbsdLib
 {
-// using BoolArrayType = EbsdDataArray<bool>;
+#ifdef EbsdLib_Use_Vectors
+using UInt8ArrayType = std::vector<uint8_t>;
+using Int32ArrayType = std::vector<int32_t>;
+using FloatArrayType = std::vector<float>;
+using DoubleArrayType = std::vector<double>;
+#else
 
-// using CharArrayType = EbsdDataArray<char>;
-// using UCharArrayType = EbsdDataArray<unsigned char>;
-
-// using Int8ArrayType = EbsdDataArray<int8_t>;
 using UInt8ArrayType = EbsdDataArray<uint8_t>;
-
-// using Int16ArrayType = EbsdDataArray<int16_t>;
-// using UInt16ArrayType = EbsdDataArray<uint16_t>;
-
 using Int32ArrayType = EbsdDataArray<int32_t>;
-// using UInt32ArrayType = EbsdDataArray<uint32_t>;
-
-// using Int64ArrayType = EbsdDataArray<int64_t>;
-// using UInt64ArrayType = EbsdDataArray<uint64_t>;
-
 using FloatArrayType = EbsdDataArray<float>;
 using DoubleArrayType = EbsdDataArray<double>;
+#endif
 
-// using SizeTArrayType = EbsdDataArray<size_t>;
 } // namespace EbsdLib

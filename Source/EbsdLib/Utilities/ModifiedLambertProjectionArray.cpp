@@ -639,24 +639,25 @@ int ModifiedLambertProjectionArray::writeH5Data(hid_t parentId, const std::vecto
   hsize_t lambertElements = tmp->getDimension() * tmp->getDimension();
   float sphereRadius = tmp->getSphereRadius();
 
-  Create2DExpandableDataset(gid, dsetName, static_cast<int>(lambertElements), lambertElements * 2, tmp->getNorthSquare()->getPointer(0), tmp->getSouthSquare()->getPointer(0));
-
-  EbsdLib::DoubleArrayType* north = nullptr;
-  EbsdLib::DoubleArrayType* south = nullptr;
+  Create2DExpandableDataset(gid, dsetName, static_cast<int>(lambertElements), lambertElements * 2, tmp->getNorthSquare()->data(), tmp->getSouthSquare()->data());
 
   // We start numbering our phases at 1. Anything in slot 0 is considered "Dummy" or invalid
   for(size_t i = 1; i < m_ModifiedLambertProjectionArray.size(); ++i)
   {
     if(m_ModifiedLambertProjectionArray[i] != nullptr)
     {
-      north = m_ModifiedLambertProjectionArray[i]->getNorthSquare().get();
-      south = m_ModifiedLambertProjectionArray[i]->getSouthSquare().get();
-      AppendRowToH5Dataset(gid, dsetName, static_cast<int>(lambertElements), north->getPointer(0), south->getPointer(0));
+      EbsdLib::DoubleArrayType* north = m_ModifiedLambertProjectionArray[i]->getNorthSquare();
+      EbsdLib::DoubleArrayType* south = m_ModifiedLambertProjectionArray[i]->getSouthSquare();
+      AppendRowToH5Dataset(gid, dsetName, static_cast<int>(lambertElements), north->data(), south->data());
     }
   }
 
   err = H5Lite::writeScalarAttribute(gid, dsetName, "Lambert Dimension", lambertDimension);
+  if(err < 0)
+  {}
   err = H5Lite::writeScalarAttribute(gid, dsetName, "Lambert Sphere Radius", sphereRadius);
+  if(err < 0)
+  {}
   err = H5Utilities::closeHDF5Object(gid);
   return err;
 }

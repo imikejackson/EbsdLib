@@ -66,15 +66,17 @@ public:
   {
     size_t nTuples = 2;
     // int qStride = 4;
-    std::vector<size_t> cDims(1, 3);
-    EbsdLib::FloatArrayType::Pointer eulers = EbsdLib::FloatArrayType::CreateArray(nTuples, cDims, "Eulers", true);
+    std::vector<size_t> cDims = {3};
+    std::shared_ptr<EbsdLib::FloatArrayType> eulersPtr;
+    EbsdLib::FloatArrayType& eulers = *eulersPtr;
+    eulers.resize(nTuples * cDims[0], 0.0F);
     // Initialize the Eulers with some values
-    eulers->setComponent(0, 0, 302.84f * EbsdLib::Constants::k_PiOver180F);
-    eulers->setComponent(0, 1, 51.282f * EbsdLib::Constants::k_PiOver180F);
-    eulers->setComponent(0, 2, 37.969f * EbsdLib::Constants::k_PiOver180F);
-    eulers->setComponent(1, 0, 45.0f * EbsdLib::Constants::k_PiOver180F);
-    eulers->setComponent(1, 1, 0.0f * EbsdLib::Constants::k_PiOver180F);
-    eulers->setComponent(1, 2, 0.0f * EbsdLib::Constants::k_PiOver180F);
+    eulers[0] =  302.84f * EbsdLib::Constants::k_PiOver180F;
+    eulers[1] = 51.282f * EbsdLib::Constants::k_PiOver180F;
+    eulers[2] =  37.969f * EbsdLib::Constants::k_PiOver180F;
+    eulers[3] = 45.0f * EbsdLib::Constants::k_PiOver180F;
+    eulers[4] =  0.0f * EbsdLib::Constants::k_PiOver180F;
+    eulers[5] = 0.0f * EbsdLib::Constants::k_PiOver180F;
 
     // float rad = 302.84f * static_cast<float>(EbsdLib::Constants::k_PiOver180);
     // std::cout << "Rad: " << rad << std::endl;
@@ -83,11 +85,11 @@ public:
     // std::cout << "Remainer (302.84/360): " << remainder(rad, EbsdLib::Constants::k_2Pi) << std::endl;
     // std::cout << "fmod (5.28556 / 2Pi): " << fmod(rad, EbsdLib::Constants::k_2Pi) << std::endl;
 
-    OrientationConverter<EbsdLib::FloatArrayType, float>::Pointer ocEulers = EulerConverter<EbsdLib::FloatArrayType, float>::New();
-    ocEulers->setInputData(eulers);
-    ocEulers->convertRepresentationTo(OrientationRepresentation::Type::Quaternion);
+    EulerConverter<EbsdLib::FloatArrayType, float> ocEulers;
+    ocEulers.setInputData(eulersPtr);
+    ocEulers.convertRepresentationTo(OrientationRepresentation::Type::Quaternion);
 
-    EbsdLib::FloatArrayType::Pointer output = ocEulers->getOutputData();
+    std::shared_ptr<EbsdLib::FloatArrayType> output = ocEulers.getOutputData();
 
     std::vector<float> exemplar = {-0.2919894754886627F, 0.319372F, 0.1502762138843536F, 0.8889099955558777F, 0.0000000000000000F, -0.000000F, -0.3826834559440613F, 0.9238795042037964F};
 
@@ -109,25 +111,30 @@ public:
 
     size_t nTuples = 1;
     int qStride = 4;
-    std::vector<size_t> cDims(1, 3);
-    EbsdLib::FloatArrayType::Pointer eulers = EbsdLib::FloatArrayType::CreateArray(nTuples, cDims, "Eulers", true);
+    std::vector<size_t> cDims = {3};
+    std::shared_ptr<EbsdLib::FloatArrayType> eulersPtr;
+    eulersPtr->resize(nTuples * cDims[0]);
+    EbsdLib::FloatArrayType eulers  = *eulersPtr;
     // Initialize the Eulers with some values
-    eulers->setComponent(0, 0, phi1);
-    eulers->setComponent(0, 1, phi);
-    eulers->setComponent(0, 2, phi2);
+    eulers[0] =  phi1;
+    eulers[1] = phi;
+    eulers[2] =  phi2;
 
     using StringContainerType = std::vector<std::string>;
     using OCType = OrientationConverter<EbsdLib::FloatArrayType, float>;
     std::vector<OrientationRepresentation::Type> ocTypes = OCType::GetOrientationTypes();
     auto tStrings = OCType::GetOrientationTypeStrings<StringContainerType>();
-    std::vector<OCType::Pointer> converters(6);
-    converters[0] = EulerConverter<EbsdLib::FloatArrayType, float>::New();
-    converters[1] = OrientationMatrixConverter<EbsdLib::FloatArrayType, float>::New();
-    converters[2] = QuaternionConverter<EbsdLib::FloatArrayType, float>::New();
-    converters[3] = AxisAngleConverter<EbsdLib::FloatArrayType, float>::New();
-    converters[4] = RodriguesConverter<EbsdLib::FloatArrayType, float>::New();
-    converters[5] = HomochoricConverter<EbsdLib::FloatArrayType, float>::New();
-    // converters[6] = CubochoricConverter<EbsdLib::FloatArrayType,float>::New();
+
+    using OCSharedPtrType = std::shared_ptr<OCType>;
+    std::vector<OCSharedPtrType> converters(6);
+
+    converters[0] = std::shared_ptr<EulerConverter<std::vector<float>, float>>(new EulerConverter<std::vector<float>, float>());
+    converters[1] = std::shared_ptr<OrientationMatrixConverter<EbsdLib::FloatArrayType, float>>(new OrientationMatrixConverter<EbsdLib::FloatArrayType, float>());
+    converters[2] = std::shared_ptr<QuaternionConverter<EbsdLib::FloatArrayType, float>>(new QuaternionConverter<EbsdLib::FloatArrayType, float>());
+    converters[3] = std::shared_ptr<AxisAngleConverter<EbsdLib::FloatArrayType, float>>(new AxisAngleConverter<EbsdLib::FloatArrayType, float>());
+    converters[4] = std::shared_ptr<RodriguesConverter<EbsdLib::FloatArrayType, float>>(new RodriguesConverter<EbsdLib::FloatArrayType, float>());
+    converters[5] = std::shared_ptr<HomochoricConverter<EbsdLib::FloatArrayType, float>>(new HomochoricConverter<EbsdLib::FloatArrayType, float>());
+    // converters[6] = std::shared_ptr<CubochoricConverter<EbsdLib::FloatArrayType,float>>(new CubochoricConverter<EbsdLib::FloatArrayType, float>());
 
     OrientationTransformation::ResultType result;
     auto strides = OCType::GetComponentCounts<std::vector<int>>();
@@ -141,20 +148,20 @@ public:
           continue;
         }
 
-        converters[t0]->setInputData(eulers);
+        converters[t0]->setInputData(eulersPtr);
         converters[t0]->convertRepresentationTo(ocTypes[t1]);
-        EbsdLib::FloatArrayType::Pointer t1_output = converters[t0]->getOutputData();
+        std::shared_ptr<EbsdLib::FloatArrayType> t1_output = converters[t0]->getOutputData();
 
         converters[t1]->setInputData(t1_output);
         converters[t1]->convertRepresentationTo(ocTypes[t0]);
-        EbsdLib::FloatArrayType::Pointer t0_output = converters[t1]->getOutputData();
+        std::shared_ptr<EbsdLib::FloatArrayType> t0_output = converters[t1]->getOutputData();
 
         qStride = strides[t0];
         std::vector<float> delta(qStride, 0);
         for(size_t i = 0; i < nTuples; i++)
         {
-          float* orig = eulers->getPointer(i * qStride);
-          float* converted = t0_output->getPointer(i * qStride);
+          float* orig = eulersPtr->data() + (i * qStride);
+          float* converted = t0_output->data() + (i * qStride);
           // printf("%s -> %s -> %s\n", tStrings[t0].toLatin1().constData(), tStrings[t1].toLatin1().constData(), tStrings[t0].toLatin1().constData());
           for(size_t j = 0; j < qStride; j++)
           {

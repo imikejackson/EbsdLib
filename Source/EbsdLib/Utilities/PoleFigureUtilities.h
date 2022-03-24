@@ -99,7 +99,7 @@ public:
    * @param max
    * @return
    */
-  static EbsdLib::UInt8ArrayType::Pointer CreateColorImage(EbsdLib::DoubleArrayType* data, int width, int height, int nColors, const std::string& name, double min, double max);
+  static EbsdLib::UInt8ArrayType CreateColorImage(EbsdLib::DoubleArrayType& data, int width, int height, int nColors, const std::string& name, double min, double max);
 
   /**
    * @brief CreateColorImage
@@ -107,7 +107,7 @@ public:
    * @param config
    * @param image
    */
-  static void CreateColorImage(EbsdLib::DoubleArrayType* data, PoleFigureConfiguration_t& config, EbsdLib::UInt8ArrayType* image);
+  static void CreateColorImage(EbsdLib::DoubleArrayType& data, PoleFigureConfiguration_t& config, EbsdLib::UInt8ArrayType& image);
 
 private:
   /**
@@ -119,8 +119,8 @@ private:
    * @param intensity1010 [output]
    * @param intensity1120 [output]
    */
-  void GenerateHexPoleFigures(EbsdLib::FloatArrayType* eulers, int lambertDimension, int poleFigureDim, EbsdLib::DoubleArrayType::Pointer& intensity0001,
-                              EbsdLib::DoubleArrayType::Pointer& intensity1010, EbsdLib::DoubleArrayType::Pointer& intensity1120);
+  void GenerateHexPoleFigures(EbsdLib::FloatArrayType& eulers, int lambertDimension, int poleFigureDim, EbsdLib::DoubleArrayType& intensity0001,
+                              EbsdLib::DoubleArrayType& intensity1010, EbsdLib::DoubleArrayType& intensity1120);
 
   /**
    * @brief GenerateHexPoleFigures
@@ -131,8 +131,8 @@ private:
    * @param intensity010 [output]
    * @param intensity001 [output]
    */
-  void GenerateOrthoPoleFigures(EbsdLib::FloatArrayType* eulers, int lambertDimension, int poleFigureDim, EbsdLib::DoubleArrayType::Pointer& intensity100,
-                                EbsdLib::DoubleArrayType::Pointer& intensity010, EbsdLib::DoubleArrayType::Pointer& intensity001);
+  void GenerateOrthoPoleFigures(EbsdLib::FloatArrayType& eulers, int lambertDimension, int poleFigureDim, EbsdLib::DoubleArrayType& intensity100,
+                                EbsdLib::DoubleArrayType& intensity010, EbsdLib::DoubleArrayType& intensity001);
 
 public:
   PoleFigureUtilities(const PoleFigureUtilities&) = delete;            // Copy Constructor Not Implemented
@@ -148,7 +148,7 @@ public:
 class GeneratePoleFigureRgbaImageImpl
 {
 public:
-  GeneratePoleFigureRgbaImageImpl(EbsdLib::DoubleArrayType* intensity, PoleFigureConfiguration_t* config, EbsdLib::UInt8ArrayType* rgba);
+  GeneratePoleFigureRgbaImageImpl(EbsdLib::DoubleArrayType& intensity, PoleFigureConfiguration_t& config, EbsdLib::UInt8ArrayType& rgba);
   virtual ~GeneratePoleFigureRgbaImageImpl();
 
   void operator()() const;
@@ -157,7 +157,7 @@ protected:
   GeneratePoleFigureRgbaImageImpl();
 
 private:
-  EbsdLib::DoubleArrayType* m_Intensity = nullptr;
-  PoleFigureConfiguration_t* m_Config = nullptr;
-  EbsdLib::UInt8ArrayType* m_Rgba = nullptr;
+  EbsdLib::DoubleArrayType& m_Intensity ;
+  PoleFigureConfiguration_t& m_Config ;
+  EbsdLib::UInt8ArrayType& m_Rgba ;
 };

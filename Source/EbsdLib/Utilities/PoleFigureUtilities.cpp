@@ -60,7 +60,7 @@ PoleFigureUtilities::~PoleFigureUtilities() = default;
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int writeVtkFile(EbsdLib::FloatArrayType* xyz, const std::string& filename)
+int writeVtkFile(EbsdLib::FloatArrayType& xyz, const std::string& filename)
 {
 
   std::ofstream out(filename, std::ios_base::out);
@@ -74,11 +74,11 @@ int writeVtkFile(EbsdLib::FloatArrayType* xyz, const std::string& filename)
   out << "ASCII";
   out << "\n";
 
-  out << "DATASET UNSTRUCTURED_GRID\nPOINTS " << xyz->getNumberOfTuples() << " float\n";
-  size_t count = xyz->getNumberOfTuples();
-  for(size_t i = 0; i < count; ++i)
+  out << "DATASET UNSTRUCTURED_GRID\nPOINTS " << (xyz.size() / 3) << " float\n";
+  size_t numCoords = xyz.size() / 3;
+  for(size_t i = 0; i < numCoords; ++i)
   {
-    out << xyz->getComponent(i, 0) << " " << xyz->getComponent(i, 1) << " " << xyz->getComponent(i, 2) << "\n";
+    out << xyz[i * 3 + 0] << " " << xyz[i * 3 + 1] << " " << xyz[i * 3 + 2] << "\n";
   }
   return 0;
 }
@@ -86,10 +86,9 @@ int writeVtkFile(EbsdLib::FloatArrayType* xyz, const std::string& filename)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-EbsdLib::UInt8ArrayType::Pointer PoleFigureUtilities::CreateColorImage(EbsdLib::DoubleArrayType* data, int width, int height, int nColors, const std::string& name, double min, double max)
+EbsdLib::UInt8ArrayType PoleFigureUtilities::CreateColorImage(EbsdLib::DoubleArrayType& data, int width, int height, int nColors, const std::string& name, double min, double max)
 {
-  std::vector<size_t> dims(1, 4);
-  EbsdLib::UInt8ArrayType::Pointer image = EbsdLib::UInt8ArrayType::CreateArray(static_cast<size_t>(width * height), dims, name, true);
+  EbsdLib::UInt8ArrayType image (static_cast<size_t>(width * height) * 4);
   PoleFigureConfiguration_t config;
   config.imageDim = width;
   config.numColors = nColors;
@@ -99,14 +98,14 @@ EbsdLib::UInt8ArrayType::Pointer PoleFigureUtilities::CreateColorImage(EbsdLib::
   config.sphereRadius = 1.0;
   config.discrete = false;
   config.discreteHeatMap = false;
-  PoleFigureUtilities::CreateColorImage(data, config, image.get());
+  PoleFigureUtilities::CreateColorImage(data, config, image);
   return image;
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PoleFigureUtilities::CreateColorImage(EbsdLib::DoubleArrayType* data, PoleFigureConfiguration_t& config, EbsdLib::UInt8ArrayType* image)
+void PoleFigureUtilities::CreateColorImage(EbsdLib::DoubleArrayType& data, PoleFigureConfiguration_t& config, EbsdLib::UInt8ArrayType& image)
 {
   int width = config.imageDim;
   int height = config.imageDim;
@@ -122,8 +121,8 @@ void PoleFigureUtilities::CreateColorImage(EbsdLib::DoubleArrayType* data, PoleF
   float min = static_cast<float>(config.minScale);
 
   // Initialize the image with all zeros
-  image->initializeWithZeros();
-  uint32_t* rgbaPtr = reinterpret_cast<uint32_t*>(image->getPointer(0));
+  std::fill(image.begin(), image.end(), 0);
+  uint32_t* rgbaPtr = reinterpret_cast<uint32_t*>(image.data());
 
   int numColors = config.numColors;
   std::vector<float> colors(numColors * 3, 0.0f);
@@ -131,7 +130,7 @@ void PoleFigureUtilities::CreateColorImage(EbsdLib::DoubleArrayType* data, PoleF
 
   float r = 0.0f, g = 0.0f, b = 0.0f;
 
-  double* dataPtr = data->getPointer(0);
+  double* dataPtr = data.data();
   size_t idx = 0;
   double value;
   int bin;
@@ -188,25 +187,24 @@ void PoleFigureUtilities::CreateColorImage(EbsdLib::DoubleArrayType* data, PoleF
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PoleFigureUtilities::GenerateHexPoleFigures(EbsdLib::FloatArrayType* eulers, int lambertDimension, int poleFigureDim, EbsdLib::DoubleArrayType::Pointer& intensity0001,
-                                                 EbsdLib::DoubleArrayType::Pointer& intensity1010, EbsdLib::DoubleArrayType::Pointer& intensity1120)
+void PoleFigureUtilities::GenerateHexPoleFigures(EbsdLib::FloatArrayType& eulers, int lambertDimension, int poleFigureDim, EbsdLib::DoubleArrayType& intensity0001,
+                                                 EbsdLib::DoubleArrayType& intensity1010, EbsdLib::DoubleArrayType& intensity1120)
 {
-  size_t numOrientations = eulers->getNumberOfTuples();
+  size_t numOrientations = eulers.size() / 3;
 
   // Create an Array to hold the XYZ Coordinates which are the coords on the sphere.
   // this is size for HEX ONLY, <0001> Family
-  std::vector<size_t> dims(1, 3);
-  EbsdLib::FloatArrayType::Pointer xyz0001 = EbsdLib::FloatArrayType::CreateArray(numOrientations * 2, dims, "TEMP_<0001>_xyzCoords", true);
+  EbsdLib::FloatArrayType xyz0001 (numOrientations * 2 * 3);
   // this is size for HEX ONLY, <10-10> Family
-  EbsdLib::FloatArrayType::Pointer xyz1010 = EbsdLib::FloatArrayType::CreateArray(numOrientations * 6, dims, "TEMP_<1010>_xyzCoords", true);
+  EbsdLib::FloatArrayType xyz1010(numOrientations * 6 * 3);
   // this is size for HEX ONLY, <11-20> Family
-  EbsdLib::FloatArrayType::Pointer xyz1120 = EbsdLib::FloatArrayType::CreateArray(numOrientations * 6, dims, "TEMP_<1120>_xyzCoords", true);
+  EbsdLib::FloatArrayType xyz1120 (numOrientations * 6 * 3);
 
   float sphereRadius = 1.0f;
 
   // Generate the coords on the sphere
   HexagonalOps ops;
-  ops.generateSphereCoordsFromEulers(eulers, xyz0001.get(), xyz1010.get(), xyz1120.get());
+  ops.generateSphereCoordsFromEulers(eulers, xyz0001, xyz1010, xyz1120);
 #if WRITE_XYZ_SPHERE_COORD_VTK
   writeVtkFile(xyz0001.get(), "c:/Users/GroebeMA/Desktop/Sphere_XYZ_FROM_EULER_0001.vtk");
   writeVtkFile(xyz1010.get(), "c:/Users/GroebeMA/Desktop/Sphere_XYZ_FROM_EULER_1010.vtk");
@@ -214,11 +212,11 @@ void PoleFigureUtilities::GenerateHexPoleFigures(EbsdLib::FloatArrayType* eulers
 #endif
 
   // Generate the modified Lambert projection images (Squares, 2 of them, 1 for northern hemisphere, 1 for southern hemisphere
-  ModifiedLambertProjection::Pointer lambert = ModifiedLambertProjection::LambertBallToSquare(xyz0001.get(), lambertDimension, sphereRadius);
+  ModifiedLambertProjection::Pointer lambert = ModifiedLambertProjection::LambertBallToSquare(xyz0001, lambertDimension, sphereRadius);
   // Now create the intensity image that will become the actual Pole figure image
-  EbsdLib::DoubleArrayType::Pointer poleFigurePtr = lambert->createStereographicProjection(poleFigureDim);
-  poleFigurePtr->setName("PoleFigure_<0001>");
-  intensity0001.swap(poleFigurePtr);
+  EbsdLib::DoubleArrayType poleFigurePtr = lambert->createStereographicProjection(poleFigureDim);
+ // poleFigurePtr->setName("PoleFigure_<0001>");
+  intensity0001.assign(poleFigurePtr.begin(), poleFigurePtr.end());
 
 #if WRITE_LAMBERT_SQUARES
   size_t dims[3] = {lambert->getDimension(), lambert->getDimension(), 1};
@@ -230,40 +228,40 @@ void PoleFigureUtilities::GenerateHexPoleFigures(EbsdLib::FloatArrayType* eulers
 #endif
 
   // Generate the <011> pole figure which will generate a new set of Lambert Squares
-  lambert = ModifiedLambertProjection::LambertBallToSquare(xyz1010.get(), lambertDimension, sphereRadius);
+  lambert = ModifiedLambertProjection::LambertBallToSquare(xyz1010, lambertDimension, sphereRadius);
   poleFigurePtr = lambert->createStereographicProjection(poleFigureDim);
-  poleFigurePtr->setName("PoleFigure_<1010>");
-  intensity1010.swap(poleFigurePtr);
+ // poleFigurePtr->setName("PoleFigure_<1010>");
+  intensity1010.assign(poleFigurePtr.begin(), poleFigurePtr.end());
 
   // Generate the <111> pole figure which will generate a new set of Lambert Squares
-  lambert = ModifiedLambertProjection::LambertBallToSquare(xyz1120.get(), lambertDimension, sphereRadius);
+  lambert = ModifiedLambertProjection::LambertBallToSquare(xyz1120, lambertDimension, sphereRadius);
   poleFigurePtr = lambert->createStereographicProjection(poleFigureDim);
-  poleFigurePtr->setName("PoleFigure_<1120>");
-  intensity1120.swap(poleFigurePtr);
+ // poleFigurePtr->setName("PoleFigure_<1120>");
+  intensity1120.assign(poleFigurePtr.begin(), poleFigurePtr.end());
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PoleFigureUtilities::GenerateOrthoPoleFigures(EbsdLib::FloatArrayType* eulers, int lambertDimension, int poleFigureDim, EbsdLib::DoubleArrayType::Pointer& intensity100,
-                                                   EbsdLib::DoubleArrayType::Pointer& intensity010, EbsdLib::DoubleArrayType::Pointer& intensity001)
+void PoleFigureUtilities::GenerateOrthoPoleFigures(EbsdLib::FloatArrayType& eulers, int lambertDimension, int poleFigureDim, EbsdLib::DoubleArrayType& intensity100,
+                                                   EbsdLib::DoubleArrayType& intensity010, EbsdLib::DoubleArrayType& intensity001)
 {
-  size_t numOrientations = eulers->getNumberOfTuples();
+  size_t numOrientations = eulers.size() / 3;
 
   // Create an Array to hold the XYZ Coordinates which are the coords on the sphere.
   // this is size for ORTHO ONLY, <100> Family
   std::vector<size_t> dims(1, 3);
-  EbsdLib::FloatArrayType::Pointer xyz100 = EbsdLib::FloatArrayType::CreateArray(numOrientations * 2, dims, "TEMP_<100>_xyzCoords", true);
+  EbsdLib::FloatArrayType xyz100 (numOrientations * 2 * 3);
   // this is size for ORTHO ONLY, <010> Family
-  EbsdLib::FloatArrayType::Pointer xyz010 = EbsdLib::FloatArrayType::CreateArray(numOrientations * 2, dims, "TEMP_<010>_xyzCoords", true);
+  EbsdLib::FloatArrayType xyz010 (numOrientations * 2 * 3);
   // this is size for ORTHO ONLY, <001> Family
-  EbsdLib::FloatArrayType::Pointer xyz001 = EbsdLib::FloatArrayType::CreateArray(numOrientations * 2, dims, "TEMP_<001>_xyzCoords", true);
+  EbsdLib::FloatArrayType xyz001 (numOrientations * 2 * 3);
 
   float sphereRadius = 1.0f;
 
   // Generate the coords on the sphere
   OrthoRhombicOps ops;
-  ops.generateSphereCoordsFromEulers(eulers, xyz100.get(), xyz010.get(), xyz001.get());
+  ops.generateSphereCoordsFromEulers(eulers, xyz100, xyz010, xyz001);
 #if WRITE_XYZ_SPHERE_COORD_VTK
   writeVtkFile(xyz100.get(), "c:/Users/GroebeMA/Desktop/Sphere_XYZ_FROM_EULER_100.vtk");
   writeVtkFile(xyz010.get(), "c:/Users/GroebeMA/Desktop/Sphere_XYZ_FROM_EULER_010.vtk");
@@ -271,11 +269,11 @@ void PoleFigureUtilities::GenerateOrthoPoleFigures(EbsdLib::FloatArrayType* eule
 #endif
 
   // Generate the modified Lambert projection images (Squares, 2 of them, 1 for northern hemisphere, 1 for southern hemisphere
-  ModifiedLambertProjection::Pointer lambert = ModifiedLambertProjection::LambertBallToSquare(xyz100.get(), lambertDimension, sphereRadius);
+  ModifiedLambertProjection::Pointer lambert = ModifiedLambertProjection::LambertBallToSquare(xyz100, lambertDimension, sphereRadius);
   // Now create the intensity image that will become the actual Pole figure image
-  EbsdLib::DoubleArrayType::Pointer poleFigurePtr = lambert->createStereographicProjection(poleFigureDim);
-  poleFigurePtr->setName("PoleFigure_<100>");
-  intensity100.swap(poleFigurePtr);
+  EbsdLib::DoubleArrayType poleFigurePtr = lambert->createStereographicProjection(poleFigureDim);
+  //poleFigurePtr->setName("PoleFigure_<100>");
+  intensity100.assign(poleFigurePtr.begin(), poleFigurePtr.end());
 
 #if WRITE_LAMBERT_SQUARES
   size_t dims[3] = {lambert->getDimension(), lambert->getDimension(), 1};
@@ -287,24 +285,20 @@ void PoleFigureUtilities::GenerateOrthoPoleFigures(EbsdLib::FloatArrayType* eule
 #endif
 
   // Generate the <011> pole figure which will generate a new set of Lambert Squares
-  lambert = ModifiedLambertProjection::LambertBallToSquare(xyz010.get(), lambertDimension, sphereRadius);
+  lambert = ModifiedLambertProjection::LambertBallToSquare(xyz010, lambertDimension, sphereRadius);
   poleFigurePtr = lambert->createStereographicProjection(poleFigureDim);
-  poleFigurePtr->setName("PoleFigure_<010>");
-  intensity010.swap(poleFigurePtr);
+ // poleFigurePtr->setName("PoleFigure_<010>");
+  intensity010.assign(poleFigurePtr.begin(), poleFigurePtr.end());
 
   // Generate the <111> pole figure which will generate a new set of Lambert Squares
-  lambert = ModifiedLambertProjection::LambertBallToSquare(xyz001.get(), lambertDimension, sphereRadius);
+  lambert = ModifiedLambertProjection::LambertBallToSquare(xyz001, lambertDimension, sphereRadius);
   poleFigurePtr = lambert->createStereographicProjection(poleFigureDim);
-  poleFigurePtr->setName("PoleFigure_<001>");
-  intensity001.swap(poleFigurePtr);
+ // poleFigurePtr->setName("PoleFigure_<001>");
+  intensity001.assign(poleFigurePtr.begin(), poleFigurePtr.end());
 }
 
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-GeneratePoleFigureRgbaImageImpl::GeneratePoleFigureRgbaImageImpl() = default;
 
-GeneratePoleFigureRgbaImageImpl::GeneratePoleFigureRgbaImageImpl(EbsdLib::DoubleArrayType* intensity, PoleFigureConfiguration_t* config, EbsdLib::UInt8ArrayType* rgba)
+GeneratePoleFigureRgbaImageImpl::GeneratePoleFigureRgbaImageImpl(EbsdLib::DoubleArrayType& intensity, PoleFigureConfiguration_t& config, EbsdLib::UInt8ArrayType& rgba)
 : m_Intensity(intensity)
 , m_Config(config)
 , m_Rgba(rgba)
@@ -317,5 +311,5 @@ GeneratePoleFigureRgbaImageImpl::~GeneratePoleFigureRgbaImageImpl() = default;
 // -----------------------------------------------------------------------------
 void GeneratePoleFigureRgbaImageImpl::operator()() const
 {
-  PoleFigureUtilities::CreateColorImage(m_Intensity, *m_Config, m_Rgba);
+  PoleFigureUtilities::CreateColorImage(m_Intensity, m_Config, m_Rgba);
 }

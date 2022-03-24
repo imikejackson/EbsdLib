@@ -91,7 +91,7 @@ public:
    * @param sphereRadius The radius of the sphere from where the coordinates are coming from.
    * @return
    */
-  static Pointer LambertBallToSquare(EbsdLib::FloatArrayType* coords, int dimension, float sphereRadius);
+  static Pointer LambertBallToSquare(EbsdLib::FloatArrayType& coords, int dimension, float sphereRadius);
 
   /**
    * @brief Getter property for Dimension
@@ -115,13 +115,13 @@ public:
    * @brief Getter property for NorthSquare
    * @return Value of NorthSquare
    */
-  EbsdLib::DoubleArrayType::Pointer getNorthSquare() const;
+  EbsdLib::DoubleArrayType* getNorthSquare();
 
   /**
    * @brief Getter property for SouthSquare
    * @return Value of SouthSquare
    */
-  EbsdLib::DoubleArrayType::Pointer getSouthSquare() const;
+  EbsdLib::DoubleArrayType* getSouthSquare();
 
   /**
    * @brief initializeSquares
@@ -206,7 +206,7 @@ public:
    * @brief createStereographicProjection
    * @param stereoGraphicProjectionDims
    */
-  EbsdLib::DoubleArrayType::Pointer createStereographicProjection(int dim);
+  EbsdLib::DoubleArrayType createStereographicProjection(int dim);
 
   void createStereographicProjection(int dim, EbsdLib::DoubleArrayType& stereoIntensity);
 
@@ -231,8 +231,8 @@ private:
   float m_MaxCoord;
   float m_MinCoord;
 
-  EbsdLib::DoubleArrayType::Pointer m_NorthSquare;
-  EbsdLib::DoubleArrayType::Pointer m_SouthSquare;
+  EbsdLib::DoubleArrayType m_NorthSquare;
+  EbsdLib::DoubleArrayType m_SouthSquare;
 
 public:
   ModifiedLambertProjection(const ModifiedLambertProjection&) = delete;            // Copy Constructor Not Implemented

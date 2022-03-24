@@ -49,7 +49,7 @@ public:
    * @param config
    * @param intensity
    */
-  ComputeStereographicProjection(EbsdLib::FloatArrayType* xyzCoords, PoleFigureConfiguration_t* config, EbsdLib::DoubleArrayType* intensity);
+  ComputeStereographicProjection(EbsdLib::FloatArrayType& xyzCoords, PoleFigureConfiguration_t* config, EbsdLib::DoubleArrayType& intensity);
 
   virtual ~ComputeStereographicProjection();
 
@@ -65,9 +65,9 @@ protected:
   ComputeStereographicProjection();
 
 private:
-  EbsdLib::FloatArrayType* m_XYZCoords = nullptr;
+  EbsdLib::FloatArrayType& m_XYZCoords;
   PoleFigureConfiguration_t* m_Config = nullptr;
-  EbsdLib::DoubleArrayType* m_Intensity = nullptr;
+  EbsdLib::DoubleArrayType& m_Intensity;
 
 public:
   ComputeStereographicProjection(const ComputeStereographicProjection&) = delete; // Copy Constructor Not Implemented

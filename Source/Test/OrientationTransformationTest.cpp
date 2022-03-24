@@ -512,19 +512,19 @@ public:
               // cDims[0] = k_CompDims[0];
               DataArrayPointerType data = attrMat->getAttributeArrayAs<DataArrayType>(k_InputNames[0]);
               OrientationPrinters::PrintTuple<K>(data, t);
-              CheckRepresentation<K>(data->getPointer(t), 0);
+              CheckRepresentation<K>(data->data() + (t), 0);
 
               // Print the starting representation
               data = attrMat->getAttributeArrayAs<DataArrayType>(k_InputNames[entry[0]]);
               OrientationPrinters::PrintTuple<K>(data, t);
-              CheckRepresentation<K>(data->getPointer(t), entry[0]);
+              CheckRepresentation<K>(data->data() + (t), entry[0]);
 
               // Now print all the intermediate Representations
               for(int q = 0; q < DataSetNames.size(); q++)
               {
                 data = attrMat->getAttributeArrayAs<DataArrayType>(DataSetNames[q]);
                 OrientationPrinters::PrintTuple<K>(data, t);
-                CheckRepresentation<K>(data->getPointer(t), DataSetTypes[q]);
+                CheckRepresentation<K>(data->data() + (t), DataSetTypes[q]);
               }
               DREAM3D_REQUIRED(delta, <=, thr)
               break;

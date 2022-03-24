@@ -81,9 +81,9 @@ public:
   // -----------------------------------------------------------------------------
   //
   // -----------------------------------------------------------------------------
-  void SaveImage(EbsdLib::UInt8ArrayType::Pointer rgbaImage, const std::string outputFile)
+  void SaveImage(EbsdLib::UInt8ArrayType rgbaImage, const std::string outputFile)
   {
-    QRgb* rgba = reinterpret_cast<QRgb*>(rgbaImage->getPointer(0));
+    QRgb* rgba = reinterpret_cast<QRgb*>(rgbaImage->data());
 
     QImage image(getImageSize(), getImageSize(), QImage::Format_ARGB32_Premultiplied);
 
@@ -122,7 +122,7 @@ public:
   void TestIPFLegend(const std::string& outputFile)
   {
     LaueOpsType ops;
-    EbsdLib::UInt8ArrayType::Pointer image = ops.generateIPFTriangleLegend(IMAGE_WIDTH);
+    EbsdLib::UInt8ArrayType image = ops.generateIPFTriangleLegend(IMAGE_WIDTH);
 
     SaveImage(image, outputFile);
   }
