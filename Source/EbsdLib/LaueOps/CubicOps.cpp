@@ -38,7 +38,6 @@
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
-#include <tbb/partitioner.h>
 #include <tbb/task.h>
 #include <tbb/task_group.h>
 #endif
@@ -47,10 +46,53 @@
 // to expose some of the constants needed below
 #include "EbsdLib/Core/EbsdMacros.h"
 #include "EbsdLib/Core/Orientation.hpp"
+#include "EbsdLib/Core/EbsdDataArray.hpp"
 #include "EbsdLib/Math/EbsdLibMath.h"
 #include "EbsdLib/Math/GeometryMath.h"
 #include "EbsdLib/Utilities/ColorUtilities.h"
 #include "EbsdLib/Utilities/ComputeStereographicProjection.h"
+
+#include "H5Support/H5Utilities.h"
+#include "H5Support/H5Lite.h"
+
+#include <fstream>
+#include <vector>
+#include <algorithm>
+
+namespace
+{
+
+
+// -----------------------------------------------------------------------------
+template <typename T>
+void WriteDataArray(const std::string& outFile, const EbsdDataArray<T>& data, const std::array<size_t, 3>& dims, const std::array<float, 3> spacing, const std::array<float, 3> origin)
+{
+  // qDebug() << "Writing DataArray " << iDataPtr->getName() << " To a VTK File";
+
+  using ArrayType =  EbsdDataArray<T>;
+  std::cout << "Writing file..." << std::endl;
+
+  std::ofstream outStream(outFile);
+
+  outStream << "# vtk DataFile Version 3.0" << std::endl;
+  outStream << "vtk output" << std::endl;
+  outStream << "BINARY" << std::endl;
+  outStream << "DATASET STRUCTURED_POINTS" << std::endl;
+  outStream << "DIMENSIONS " << dims[0] << " " << dims[1] << " " << dims[2] << std::endl;
+  outStream << "SPACING " << spacing[0] << " " << spacing[1] << " "
+            << spacing[2] << std::endl;
+  outStream << "ORIGIN " << 0 << " " << 0 << " "
+            << 0 << std::endl;
+  outStream << "POINT_DATA " << dims[0]*dims[1]*dims[2] << std::endl;
+  outStream << "SCALARS Intensity float" << std::endl;
+  outStream << "LOOKUP_TABLE default" << std::endl;
+
+  outStream.write(reinterpret_cast<char*>(data.getPointer(0)), data.size() * sizeof(float));
+
+  outStream << std::endl;
+  outStream.close();
+}
+} // namespace
 
 namespace CubicHigh
 {
@@ -1310,7 +1352,7 @@ public:
       direction[2] = 0.0;
       EbsdMatrixMath::Multiply3x3with3x1(gTranpose, direction, m_xyz001->getPointer(i * 18));
       EbsdMatrixMath::Copy3x1(m_xyz001->getPointer(i * 18), m_xyz001->getPointer(i * 18 + 3));
-      EbsdMatrixMath::Multiply3x1withConstant(m_xyz001->getPointer(i * 18 + 3), -1.0f);
+      EbsdMatrixMath::Multiply3x1withConstant(m_xyz001->getPointer(i * 18 + 3), -1.0f); // Flip to the opposite hemisphere
       direction[0] = 0.0;
       direction[1] = 1.0;
       direction[2] = 0.0;
@@ -1409,17 +1451,17 @@ void CubicOps::generateSphereCoordsFromEulers(EbsdLib::FloatArrayType* eulers, E
   size_t nOrientations = eulers->getNumberOfTuples();
 
   // Sanity Check the size of the arrays
-  if(xyz001->getNumberOfTuples() < nOrientations * CubicHigh::symSize0)
+  if(xyz001->getNumberOfTuples() != nOrientations * CubicHigh::symSize0)
   {
-    xyz001->resizeTuples(nOrientations * CubicHigh::symSize0 * 3);
+    xyz001->resizeTuples(nOrientations * CubicHigh::symSize0);
   }
-  if(xyz011->getNumberOfTuples() < nOrientations * CubicHigh::symSize1)
+  if(xyz011->getNumberOfTuples() != nOrientations * CubicHigh::symSize1)
   {
-    xyz011->resizeTuples(nOrientations * CubicHigh::symSize1 * 3);
+    xyz011->resizeTuples(nOrientations * CubicHigh::symSize1);
   }
-  if(xyz111->getNumberOfTuples() < nOrientations * CubicHigh::symSize2)
+  if(xyz111->getNumberOfTuples() != nOrientations * CubicHigh::symSize2)
   {
-    xyz111->resizeTuples(nOrientations * CubicHigh::symSize2 * 3);
+    xyz111->resizeTuples(nOrientations * CubicHigh::symSize2);
   }
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
@@ -1730,18 +1772,26 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> CubicOps::generatePoleFigure(PoleF
 
   size_t numOrientations = config.eulers->getNumberOfTuples();
 
+  /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! THIS SECTION CAN ALLOCATE A LOT OF MEMORY. IN THIS CASE THE NUMBER OF EULERS
+   ! MULTIPLIED BY THE NUMBER OF SYMMETRY OPERATORS (AND ANY INVERSION). IN THE
+   ! CASE OF CUBIC HIGH (THIS CLASS), THAT SHOULD BE 48. SO WE END UP WITH
+   ! 48 * numOrientations. THAT COULD BE HUGE.
+   !
+   */
+
   // Create an Array to hold the XYZ Coordinates which are the coords on the sphere.
   // this is size for CUBIC ONLY, <001> Family
-  std::vector<size_t> dims(1, 3);
-  EbsdLib::FloatArrayType::Pointer xyz001 = EbsdLib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize0, dims, label0 + std::string("xyzCoords"), true);
+  std::vector<size_t> compDims = {3};
+  EbsdLib::FloatArrayType::Pointer xyz001 = EbsdLib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize0, compDims, label0 + std::string("xyzCoords"), true);
   // this is size for CUBIC ONLY, <011> Family
-  EbsdLib::FloatArrayType::Pointer xyz011 = EbsdLib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize1, dims, label1 + std::string("xyzCoords"), true);
+  EbsdLib::FloatArrayType::Pointer xyz011 = EbsdLib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize1, compDims, label1 + std::string("xyzCoords"), true);
   // this is size for CUBIC ONLY, <111> Family
-  EbsdLib::FloatArrayType::Pointer xyz111 = EbsdLib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize2, dims, label2 + std::string("xyzCoords"), true);
+  EbsdLib::FloatArrayType::Pointer xyz111 = EbsdLib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize2, compDims, label2 + std::string("xyzCoords"), true);
 
   config.sphereRadius = 1.0f;
 
-  // Generate the coords on the sphere **** Parallelized
+  // Generate the XYZ coords on the unit sphere **** Parallelized
   generateSphereCoordsFromEulers(config.eulers, xyz001.get(), xyz011.get(), xyz111.get());
 
   // These arrays hold the "intensity" images which eventually get converted to an actual Color RGB image
@@ -1751,80 +1801,52 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> CubicOps::generatePoleFigure(PoleF
   EbsdLib::DoubleArrayType::Pointer intensity111 = EbsdLib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label2 + "_Intensity_Image", true);
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
-  bool doParallel = true;
-
-  if(doParallel)
-  {
-    std::shared_ptr<tbb::task_group> g(new tbb::task_group);
-    g->run(ComputeStereographicProjection(xyz001.get(), &config, intensity001.get()));
-    g->run(ComputeStereographicProjection(xyz011.get(), &config, intensity011.get()));
-    g->run(ComputeStereographicProjection(xyz111.get(), &config, intensity111.get()));
-    g->wait(); // Wait for all the threads to complete before moving on.
-  }
-  else
+  std::shared_ptr<tbb::task_group> g(new tbb::task_group);
+  g->run(ComputeStereographicProjection(xyz001.get(), &config, intensity001.get()));
+  g->run(ComputeStereographicProjection(xyz011.get(), &config, intensity011.get()));
+  g->run(ComputeStereographicProjection(xyz111.get(), &config, intensity111.get()));
+  g->wait(); // Wait for all the threads to complete before moving on.
+#else
+  ComputeStereographicProjection m001(xyz001.get(), &config, intensity001.get());
+  m001();
+  ComputeStereographicProjection m011(xyz011.get(), &config, intensity011.get());
+  m011();
+  ComputeStereographicProjection m111(xyz111.get(), &config, intensity111.get());
+  m111();
 #endif
-  {
-    ComputeStereographicProjection m001(xyz001.get(), &config, intensity001.get());
-    m001();
-    ComputeStereographicProjection m011(xyz011.get(), &config, intensity011.get());
-    m011();
-    ComputeStereographicProjection m111(xyz111.get(), &config, intensity111.get());
-    m111();
-  }
 
   // Find the Max and Min values based on ALL 3 arrays so we can color scale them all the same
-  double max = std::numeric_limits<double>::min();
-  double min = std::numeric_limits<double>::max();
+  const auto [min001, max001] = std::minmax_element(intensity001->begin(), intensity001->end());
+  const auto [min011, max011] = std::minmax_element(intensity011->begin(), intensity011->end());
+  const auto [min111, max111] = std::minmax_element(intensity111->begin(), intensity111->end());
 
-  double* dPtr = intensity001->getPointer(0);
-  size_t count = intensity001->getNumberOfTuples();
-  for(size_t i = 0; i < count; ++i)
+  const auto v = { *min001, *max001, *min011, *max011, *min111, *max111 };
+  const auto [min, max] = std::minmax_element(begin(v), end(v));
+
+  config.minScale = *min;
+  config.maxScale = *max;
+
+  std::array<size_t, 3> outDims = { static_cast<size_t>(config.imageDim), static_cast<size_t>(config.imageDim), 1};
+  std::array<float, 3> spacing = {2.0F/static_cast<size_t>(config.imageDim), 2.0F/static_cast<size_t>(config.imageDim), 1.0F};
+  std::array<float, 3> origin = {-1.0f, -1.0f, 0.0F};
+
+  std::vector<EbsdLib::DoubleArrayType::Pointer> arrays = {intensity001, intensity011, intensity111};
+  for(const auto& array : arrays)
   {
-    if(dPtr[i] > max)
+    EbsdLib::FloatArrayType::Pointer floatArray = EbsdLib::FloatArrayType::CreateArray(array->size(), "TEMP", true);
+    for(size_t i = 0; i < array->size(); i++)
     {
-      max = dPtr[i];
+      (*floatArray)[i] = static_cast<float>((*array)[i]);
     }
-    if(dPtr[i] < min)
-    {
-      min = dPtr[i];
-    }
+    floatArray->byteSwapElements();
+    std::string fname = "/tmp/intensity_" + array->getName() + ".vtk";
+    WriteDataArray<float>(fname, *(floatArray.get()), outDims, spacing, origin);
   }
 
-  dPtr = intensity011->getPointer(0);
-  count = intensity011->getNumberOfTuples();
-  for(size_t i = 0; i < count; ++i)
-  {
-    if(dPtr[i] > max)
-    {
-      max = dPtr[i];
-    }
-    if(dPtr[i] < min)
-    {
-      min = dPtr[i];
-    }
-  }
-
-  dPtr = intensity111->getPointer(0);
-  count = intensity111->getNumberOfTuples();
-  for(size_t i = 0; i < count; ++i)
-  {
-    if(dPtr[i] > max)
-    {
-      max = dPtr[i];
-    }
-    if(dPtr[i] < min)
-    {
-      min = dPtr[i];
-    }
-  }
-
-  config.minScale = min;
-  config.maxScale = max;
-
-  dims[0] = 4;
-  EbsdLib::UInt8ArrayType::Pointer image001 = EbsdLib::UInt8ArrayType::CreateArray(static_cast<size_t>(config.imageDim * config.imageDim), dims, label0, true);
-  EbsdLib::UInt8ArrayType::Pointer image011 = EbsdLib::UInt8ArrayType::CreateArray(static_cast<size_t>(config.imageDim * config.imageDim), dims, label1, true);
-  EbsdLib::UInt8ArrayType::Pointer image111 = EbsdLib::UInt8ArrayType::CreateArray(static_cast<size_t>(config.imageDim * config.imageDim), dims, label2, true);
+  compDims[0] = 4;
+  EbsdLib::UInt8ArrayType::Pointer image001 = EbsdLib::UInt8ArrayType::CreateArray(static_cast<size_t>(config.imageDim * config.imageDim), compDims, label0, true);
+  EbsdLib::UInt8ArrayType::Pointer image011 = EbsdLib::UInt8ArrayType::CreateArray(static_cast<size_t>(config.imageDim * config.imageDim), compDims, label1, true);
+  EbsdLib::UInt8ArrayType::Pointer image111 = EbsdLib::UInt8ArrayType::CreateArray(static_cast<size_t>(config.imageDim * config.imageDim), compDims, label2, true);
 
   std::vector<EbsdLib::UInt8ArrayType::Pointer> poleFigures(3);
   if(config.order.size() == 3)
@@ -1841,25 +1863,18 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> CubicOps::generatePoleFigure(PoleF
   }
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
-
-  if(doParallel)
-  {
-    std::shared_ptr<tbb::task_group> g(new tbb::task_group);
     g->run(GeneratePoleFigureRgbaImageImpl(intensity001.get(), &config, image001.get()));
     g->run(GeneratePoleFigureRgbaImageImpl(intensity011.get(), &config, image011.get()));
     g->run(GeneratePoleFigureRgbaImageImpl(intensity111.get(), &config, image111.get()));
     g->wait(); // Wait for all the threads to complete before moving on.
-  }
-  else
-#endif
-  {
+#else
     GeneratePoleFigureRgbaImageImpl m001(intensity001.get(), &config, image001.get());
     m001();
     GeneratePoleFigureRgbaImageImpl m011(intensity011.get(), &config, image011.get());
     m011();
     GeneratePoleFigureRgbaImageImpl m111(intensity111.get(), &config, image111.get());
     m111();
-  }
+#endif
 
 #if 0
   size_t dim[3] = {config.imageDim, config.imageDim, 1};

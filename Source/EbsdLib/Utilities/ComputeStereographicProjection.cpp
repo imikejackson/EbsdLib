@@ -31,15 +31,17 @@
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 #include "ComputeStereographicProjection.h"
 
-#define CSP_DEBUG_OUTPUT 0
+#define CSP_DEBUG_OUTPUT 1
+#if CSP_DEBUG_OUTPUT
 #ifdef EbsdLib_ENABLE_HDF5
 #include "H5Support/H5Lite.h"
 #include "H5Support/H5Utilities.h"
+using namespace H5Support;
+#endif
 #endif
 #include "EbsdLib/Utilities/ModifiedLambertProjection.h"
 
-// -----------------------------------------------------------------------------
-//
+
 // -----------------------------------------------------------------------------
 ComputeStereographicProjection::ComputeStereographicProjection(EbsdLib::FloatArrayType* xyzCoords, PoleFigureConfiguration_t* config, EbsdLib::DoubleArrayType* intensity)
 : m_XYZCoords(xyzCoords)
@@ -49,15 +51,15 @@ ComputeStereographicProjection::ComputeStereographicProjection(EbsdLib::FloatArr
 }
 
 // -----------------------------------------------------------------------------
-//
+ComputeStereographicProjection::ComputeStereographicProjection() = default;
+
 // -----------------------------------------------------------------------------
 ComputeStereographicProjection::~ComputeStereographicProjection() = default;
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 void ComputeStereographicProjection::operator()() const
 {
+  // Resize the intensity image array to the final output image size
   m_Intensity->resizeTuples(static_cast<size_t>(m_Config->imageDim * m_Config->imageDim));
   m_Intensity->initializeWithZeros();
 
@@ -85,29 +87,37 @@ void ComputeStereographicProjection::operator()() const
 
       intensity[index]++;
     }
-#if CSP_DEBUG_OUTPUT
-    // This chunk is here for some debugging....
-    int dim = m_Config->imageDim;
-    std::string filename = std::string("/tmp/Discrete-%1-%2.h5").arg(m_Intensity->getName()).arg(dim);
-    hid_t file_id = H5Utilities::createFile(filename);
-    hsize_t dims[2];
-    dims[0] = dim;
-    dims[1] = dim;
-    H5Lite::writePointerDataset(file_id, "Discrete", 2, dims, intensity);
-    H5Fclose(file_id);
-#endif
+//#if CSP_DEBUG_OUTPUT
+//    // This chunk is here for some debugging....
+//    int dim = m_Config->imageDim;
+//    std::string filename = "/tmp/Discrete-" + m_Intensity->getName() + "-" + dim + ".h5";
+//    hid_t file_id = H5Utilities::createFile(filename);
+//    hsize_t dims[2];
+//    dims[0] = dim;
+//    dims[1] = dim;
+//    H5Lite::writePointerDataset(file_id, "Discrete", 2, dims, intensity);
+//    H5Fclose(file_id);
+//#endif
   }
   else
   {
     ModifiedLambertProjection::Pointer lambert = ModifiedLambertProjection::LambertBallToSquare(m_XYZCoords, m_Config->lambertDim, m_Config->sphereRadius);
-    lambert->normalizeSquaresToMRD();
 #if CSP_DEBUG_OUTPUT
     int dim = lambert->getDimension();
-    std::string filename = std::string("/tmp/Lambert-%1.h5").arg(dim).arg(m_Config->);
+    std::string filename = "/tmp/Lambert-" + m_Config->phaseName + ".h5";
+
     hid_t file_id = H5Utilities::createFile(filename);
-    lambert->writeHDF5Data(file_id);
+
+    auto northSquare = lambert->getNorthSquare();
+    auto southSquare = lambert->getSouthSquare();
+    int32_t rank = 2;
+    std::array<hsize_t, 2> dims = {static_cast<hsize_t>(lambert->getDimension()),static_cast<hsize_t>(lambert->getDimension())};
+    auto err = H5Lite::writePointerDataset(file_id, northSquare->getName(), rank, dims.data(), northSquare->getPointer(0));
+    err = H5Lite::writePointerDataset(file_id, southSquare->getName(), rank, dims.data(), northSquare->getPointer(0));
     H5Fclose(file_id);
 #endif
+    lambert->normalizeSquaresToMRD();
+
     lambert->createStereographicProjection(m_Config->imageDim, *m_Intensity);
   }
 }

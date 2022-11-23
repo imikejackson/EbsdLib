@@ -48,16 +48,14 @@ namespace
 double calcInterpolatedValue(const ModifiedLambertProjection& self, const std::array<float, 3>& xyz)
 {
   std::array<float, 2> sqCoord{};
+  // Checks if the value is in north or south square
   if(self.getSquareCoord(xyz.data(), sqCoord.data()))
   {
     // get Value from North square
     return self.getInterpolatedValue(ModifiedLambertProjection::Square::NorthSquare, sqCoord.data());
   }
-  else
-  {
-    // get Value from South square
-    return self.getInterpolatedValue(ModifiedLambertProjection::Square::SouthSquare, sqCoord.data());
-  }
+  // get Value from South square
+  return self.getInterpolatedValue(ModifiedLambertProjection::Square::SouthSquare, sqCoord.data());
 };
 } // namespace
 
@@ -171,6 +169,7 @@ void ModifiedLambertProjection::initializeSquares(int dims, float sphereRadius)
   m_SouthSquare = EbsdLib::DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambert_SouthSquare", true);
   m_SouthSquare->initializeWithZeros();
 }
+
 #ifdef DATA_ARRAY_ENABLE_HDF5_IO
 // -----------------------------------------------------------------------------
 //
@@ -508,6 +507,8 @@ void ModifiedLambertProjection::normalizeSquares()
     nTotal = nTotal + north[i];
     sTotal = sTotal + south[i];
   }
+  std::cout << "nTotal: " << nTotal << std::endl;
+  std::cout << "sTotal: " << sTotal << std::endl;
   double oneOverNTotal = 1.0 / nTotal;
   double oneOverSTotal = 1.0 / sTotal;
 
@@ -542,46 +543,49 @@ void ModifiedLambertProjection::normalizeSquaresToMRD()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void ModifiedLambertProjection::createStereographicProjection(int dim, EbsdLib::DoubleArrayType& stereoIntensity)
+void ModifiedLambertProjection::createStereographicProjection(int outputImageDimensions, EbsdLib::DoubleArrayType& stereoIntensity)
 {
-  int xpoints = dim;
-  int ypoints = dim;
+  const int xImageDim = outputImageDimensions;
+  const int yImageDim = outputImageDimensions;
 
-  int xpointshalf = xpoints / 2;
-  int ypointshalf = ypoints / 2;
+  const int xHalfImageDim = xImageDim / 2;
+  const int yHalfImageDim = yImageDim / 2;
 
-  float xres = 2.0f / static_cast<float>(xpoints);
-  float yres = 2.0f / static_cast<float>(ypoints);
+  const float xSpacing = 2.0f / static_cast<float>(xImageDim);
+  const float ySpacing = 2.0f / static_cast<float>(yImageDim);
 
   stereoIntensity.initializeWithZeros();
-
-  for(int64_t y = 0; y < ypoints; y++)
+  // Loop over every Output Image Pixel. The origin of this space is 0.0 but the
+  // real origin we want is -(imageDim/2) because the stereographic projection
+  // goes from -1 to 1
+  for(int64_t y = 0; y < yImageDim; y++)
   {
-    for(int64_t x = 0; x < xpoints; x++)
+    for(int64_t x = 0; x < xImageDim; x++)
     {
       // get (x,y) for stereographic projection pixel
-      float xtmp = static_cast<float>(x - xpointshalf) * xres + (xres * 0.5f);
-      float ytmp = static_cast<float>(y - ypointshalf) * yres + (yres * 0.5f);
-      int index = static_cast<int>(y * xpoints + x);
-      if((xtmp * xtmp + ytmp * ytmp) <= 1.0)
+      float xStereoCoord = static_cast<float>(x - xHalfImageDim) * xSpacing + (xSpacing * 0.5f);
+      float yStereoCoord = static_cast<float>(y - yHalfImageDim) * ySpacing + (ySpacing * 0.5f);
+
+      // Check if the XY coordinate is inside a circle of radius 1.0
+      if((xStereoCoord * xStereoCoord + yStereoCoord * yStereoCoord) > 1.0)
       {
-        std::array<float, 3> xyz{};
-        // project xy from stereo projection to the unit spehere
-        xyz[2] = -((xtmp * xtmp + ytmp * ytmp) - 1) / ((xtmp * xtmp + ytmp * ytmp) + 1);
-        xyz[0] = xtmp * (1 + xyz[2]);
-        xyz[1] = ytmp * (1 + xyz[2]);
-
-        stereoIntensity[index] += calcInterpolatedValue(*this, xyz);
-
-        for(auto& value : xyz)
-        {
-          value *= -1.0f;
-        }
-
-        stereoIntensity[index] += calcInterpolatedValue(*this, xyz);
-
-        stereoIntensity[index] *= 0.5;
+        continue; // Skip this pixel
       }
+      std::array<float, 3> xyz{};
+      // project xy from stereo projection to the unit sphere
+      xyz[2] = -((xStereoCoord * xStereoCoord + yStereoCoord * yStereoCoord) - 1) / ((xStereoCoord * xStereoCoord + yStereoCoord * yStereoCoord) + 1);
+      xyz[0] = xStereoCoord * (1.0F + xyz[2]);
+      xyz[1] = yStereoCoord * (1.0F + xyz[2]);
+      const int index = static_cast<int>(y * xImageDim + x);
+
+      stereoIntensity[index] += calcInterpolatedValue(*this, xyz);
+
+      for(auto& value : xyz)
+      {
+        value *= -1.0f;
+      }
+      stereoIntensity[index] += calcInterpolatedValue(*this, xyz);
+      stereoIntensity[index] *= 0.5;
     }
   }
 }
