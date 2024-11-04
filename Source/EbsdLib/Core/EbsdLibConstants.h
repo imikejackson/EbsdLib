@@ -72,21 +72,6 @@ inline const std::string GBCD("GBCD");
 
 namespace NumericTypes
 {
-namespace Names
-{
-inline const std::string Int8("signed int 8 bit");
-inline const std::string UInt8("unsigned int 8 bit");
-inline const std::string Int16("signed int 16 bit");
-inline const std::string UInt16("unsigned int 16 bit");
-inline const std::string Int32("signed int 32 bit");
-inline const std::string UInt32("unsigned int 32 bit");
-inline const std::string Int64("signed int 64 bit");
-inline const std::string UInt64("unsigned int 64 bit");
-inline const std::string Float("Float 32 bit");
-inline const std::string Double("Double 64 bit");
-inline const std::string Bool("Bool");
-inline const std::string SizeT("size_t");
-} // namespace Names
 
 enum class Type : int32_t
 {
@@ -105,9 +90,6 @@ enum class Type : int32_t
   UnknownNumType
 };
 
-inline const std::string SupportedTypeList(NumericTypes::Names::Int8 + ", " + NumericTypes::Names::UInt8 + ", " + NumericTypes::Names::Int16 + ", " + NumericTypes::Names::UInt16 + ", " +
-                                           NumericTypes::Names::Int32 + ", " + NumericTypes::Names::UInt32 + ", " + NumericTypes::Names::Int64 + ", " + NumericTypes::Names::UInt64 + ", " +
-                                           NumericTypes::Names::Float + ", " + NumericTypes::Names::Double + ", " + NumericTypes::Names::Bool + ", " + NumericTypes::Names::SizeT);
 } // namespace NumericTypes
 
 /** @brief RefFrameZDir defined for the Stacking order of images into a 3D Volume */
