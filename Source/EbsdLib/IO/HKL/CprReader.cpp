@@ -618,9 +618,11 @@ std::vector<CrcDataParser> CprReader::createFieldParsers(const std::string& file
       auto elementName = getFieldValue<std::string>(ini, "EDX Windows", fieldNameStrm.str());
       if(elementName.empty())
       {
-        elementName = "Unknown Field";
+        fieldNameStrm.str(""); // Clear the stringstream buffer
+        fieldNameStrm << "Field" << i;
+        elementName = fieldNameStrm.str();
       }
-      fieldOrder[i].FieldDefinition = {4, elementName, EbsdLib::NumericTypes::Type::Int32};
+      fieldOrder[i].FieldDefinition = {4, elementName, EbsdLib::NumericTypes::Type::Float};
       fieldOrder[i].destinationPtr = nullptr;
       fieldOrder[i].readOffset = currentOffset;
       currentOffset += 4;
