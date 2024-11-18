@@ -69,6 +69,15 @@ building on Windows.
 #define EbsdLib_EXPORT __attribute__((visibility("default")))
 #endif
 #endif
+
+#if !defined(EbsdLib_macOS_NO_EXPORT)
+#if defined(__APPLE__)
+#define EbsdLib_macOS_NO_EXPORT __attribute__((visibility("hidden")))
+#else
+#define EbsdLib_macOS_NO_EXPORT
+#endif
+#endif
+
 #endif
 
 /* If EbsdLib_EXPORT was never defined, define it here */

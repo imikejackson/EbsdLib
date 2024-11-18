@@ -33,7 +33,24 @@
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+/** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *  =======================>   MAC OS WARNING <================================
+ *  Xcode 16 has changes specific to Apple systems where using a static const std::string variable
+ *  inside of an inline function in this header will lead to executable crashes
+ *  in Debug (but not release). This is why the use of StringLiteral was introduced.
+ *
+ *  EbsdStringLiteral are stack allocated instead of heap allocated. Which is Good.
+ *
+ *  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ */
 #pragma once
+
+#include "EbsdLib/Core/EbsdStringLiteral.hpp"
+#include "EbsdLib/EbsdLib.h"
 
 #include <cstdint>
 #include <string>
@@ -47,7 +64,7 @@ namespace EbsdLib
 
 using Rgb = uint32_t;
 inline constexpr Rgb RGB_MASK = 0x00ffffff; // masks RGB values
-inline const std::string PathSep("|");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral PathSep("|");
 inline constexpr uint8_t Unchecked = 0;
 inline constexpr uint8_t PartiallyChecked = 1;
 inline constexpr uint8_t Checked = 2;
@@ -64,10 +81,10 @@ enum InfoStringFormat
 
 namespace StringConstants
 {
-inline const std::string Statistics("Statistics");
-inline const std::string StatsData("StatsData");
-inline const std::string StatsType("StatsType");
-inline const std::string GBCD("GBCD");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Statistics("Statistics");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral StatsData("StatsData");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral StatsType("StatsType");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral GBCD("GBCD");
 } // namespace StringConstants
 
 namespace NumericTypes
@@ -102,35 +119,35 @@ inline constexpr uint32_t UnknownRefFrameZDirection = 2;
 
 namespace H5Ebsd
 {
-inline const std::string Manufacturer("Manufacturer");
-inline const std::string Header("Header");
-inline const std::string Phases("Phases");
-inline const std::string Phase("Phase");
-inline const std::string Data("Data");
-inline const std::string Index("Index");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Manufacturer("Manufacturer");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Header("Header");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Phases("Phases");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Phase("Phase");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Data("Data");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Index("Index");
 
-inline const std::string ZStartIndex("ZStartIndex");
-inline const std::string ZEndIndex("ZEndIndex");
-inline const std::string ZResolution("Z Resolution");
-inline const std::string StackingOrder("Stacking Order");
-inline const std::string SampleTransformationAngle("SampleTransformationAngle");
-inline const std::string SampleTransformationAxis("SampleTransformationAxis");
-inline const std::string EulerTransformationAngle("EulerTransformationAngle");
-inline const std::string EulerTransformationAxis("EulerTransformationAxis");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral ZStartIndex("ZStartIndex");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral ZEndIndex("ZEndIndex");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral ZResolution("Z Resolution");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral StackingOrder("Stacking Order");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral SampleTransformationAngle("SampleTransformationAngle");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral SampleTransformationAxis("SampleTransformationAxis");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral EulerTransformationAngle("EulerTransformationAngle");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral EulerTransformationAxis("EulerTransformationAxis");
 
 // Each Manufacturer has their own naming scheme for these variables but for
 // DREAM.3D we are going to settle on using these names for consistency
-inline const std::string XResolution("X Resolution");
-inline const std::string YResolution("Y Resolution");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral XResolution("X Resolution");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral YResolution("Y Resolution");
 
 // We store the Maximum number of X and Y Points for the given volume. This
 // allows us to store slices that have different XY voxel dimensions.
-inline const std::string XPoints("Max X Points");
-inline const std::string YPoints("Max Y Points");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral XPoints("Max X Points");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral YPoints("Max Y Points");
 
-inline const std::string FileVersionStr("FileVersion");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral FileVersionStr("FileVersion");
 inline constexpr uint32_t FileVersion = 5;
-inline const std::string EbsdLibVersionStr("EbsdLibVersion");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral EbsdLibVersionStr("EbsdLibVersion");
 } // namespace H5Ebsd
 
 using EnumType = int32_t;
@@ -149,8 +166,8 @@ enum class OEM : EnumType
 
 namespace CellData
 {
-inline const std::string EulerAngles("EulerAngles");
-inline const std::string Phases("Phases");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral EulerAngles("EulerAngles");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Phases("Phases");
 } // namespace CellData
 
 enum EbsdToSampleCoordinateMapping
@@ -163,9 +180,9 @@ enum EbsdToSampleCoordinateMapping
 
 namespace StackingOrder
 {
-inline const std::string LowToHigh("Low To High");
-inline const std::string HighToLow("High To Low");
-inline const std::string UnknownStackingOrder("Unknown Stacking Order");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral LowToHigh("Low To High");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral HighToLow("High To Low");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral UnknownStackingOrder("Unknown Stacking Order");
 
 namespace Utils
 {
@@ -223,9 +240,9 @@ inline constexpr uint32_t UnknownCrystalStructure = 999; //!< UnknownCrystalStru
 
 namespace BravaisLattice
 {
-inline const std::string Unknown("Unknown");
-inline const std::string Cubic("Cubic");
-inline const std::string Hexagonal("Hexagonal");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Unknown("Unknown");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Cubic("Cubic");
+EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral Hexagonal("Hexagonal");
 } // namespace BravaisLattice
 
 namespace AngleRepresentation

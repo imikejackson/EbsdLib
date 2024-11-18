@@ -25,21 +25,21 @@ constexpr bool HasNullTerminator(const T (&string)[Size]) noexcept
 } // namespace detail
 
 /**
- * @brief BasicStringLiteral is meant to be a safe container for a string literal allowing for easy access to its size/length.
+ * @brief BasicEbsdStringLiteral is meant to be a safe container for a string literal allowing for easy access to its size/length.
  * This class should always contain a pointer to a static compile time null-terminated string literal.
  * Typical usage will be for static string constants. At this time the constructors allow non string literals to be passed in.
  * This is undesired behavior, but there is no way to overcome this in C++17 without using character parameter packs which come with their own issues.
  * Example:
  * @code
- * static constexpr StringLiteral k_Foo = "foo";
+ * static constexpr EbsdStringLiteral k_Foo = "foo";
  * @endcode
  * @tparam T Character type
  */
 template <class T>
-class BasicStringLiteral
+class BasicEbsdStringLiteral
 {
 public:
-  BasicStringLiteral() = delete;
+  BasicEbsdStringLiteral() = delete;
 
   /**
    * @brief Constructor that accepts a string literal of fixed size. Should be made consteval in C++20.
@@ -48,23 +48,23 @@ public:
    * @return
    */
   template <size_t Size>
-  constexpr BasicStringLiteral(const T (&string)[Size])
+  constexpr BasicEbsdStringLiteral(const T (&string)[Size])
   : m_String(string)
   , m_Size(Size)
   {
     if(!detail::HasNullTerminator(string))
     {
-      throw std::runtime_error("BasicStringLiteral must be null-terminated");
+      throw std::runtime_error("BasicEbsdStringLiteral must be null-terminated");
     }
   }
 
-  ~BasicStringLiteral() noexcept = default;
+  ~BasicEbsdStringLiteral() noexcept = default;
 
-  BasicStringLiteral(const BasicStringLiteral&) noexcept = default;
-  BasicStringLiteral(BasicStringLiteral&&) noexcept = default;
+  BasicEbsdStringLiteral(const BasicEbsdStringLiteral&) noexcept = default;
+  BasicEbsdStringLiteral(BasicEbsdStringLiteral&&) noexcept = default;
 
-  BasicStringLiteral& operator=(const BasicStringLiteral&) noexcept = default;
-  BasicStringLiteral& operator=(BasicStringLiteral&&) noexcept = default;
+  BasicEbsdStringLiteral& operator=(const BasicEbsdStringLiteral&) noexcept = default;
+  BasicEbsdStringLiteral& operator=(BasicEbsdStringLiteral&&) noexcept = default;
 
   /**
    * @brief Returns the c-string pointer.
@@ -133,86 +133,93 @@ private:
 };
 
 template <class T>
-bool operator==(const std::basic_string<T>& lhs, BasicStringLiteral<T> rhs)
+bool operator==(const std::basic_string<T>& lhs, BasicEbsdStringLiteral<T> rhs)
 {
   return lhs == rhs.view();
 }
 
 template <class T>
-bool operator==(BasicStringLiteral<T> lhs, const std::basic_string<T>& rhs)
+bool operator==(BasicEbsdStringLiteral<T> lhs, const std::basic_string<T>& rhs)
 {
   return rhs == lhs;
 }
 
 template <class T>
-bool operator!=(const std::basic_string<T>& lhs, BasicStringLiteral<T> rhs)
+bool operator!=(const std::basic_string<T>& lhs, BasicEbsdStringLiteral<T> rhs)
 {
   return lhs != rhs.view();
 }
 
 template <class T>
-bool operator!=(BasicStringLiteral<T> lhs, const std::basic_string<T>& rhs)
+bool operator!=(BasicEbsdStringLiteral<T> lhs, const std::basic_string<T>& rhs)
 {
   return rhs != lhs;
 }
 
 template <class T>
-bool operator<(const std::basic_string<T>& lhs, BasicStringLiteral<T> rhs)
+bool operator<(const std::basic_string<T>& lhs, BasicEbsdStringLiteral<T> rhs)
 {
   return lhs < rhs.view();
 }
 
 template <class T>
-bool operator<(BasicStringLiteral<T> lhs, const std::basic_string<T>& rhs)
+bool operator<(BasicEbsdStringLiteral<T> lhs, const std::basic_string<T>& rhs)
 {
   return lhs.view() < rhs;
 }
 
 template <class T>
-bool operator>(const std::basic_string<T>& lhs, BasicStringLiteral<T> rhs)
+bool operator>(const std::basic_string<T>& lhs, BasicEbsdStringLiteral<T> rhs)
 {
   return lhs > rhs.view();
 }
 
 template <class T>
-bool operator>(BasicStringLiteral<T> lhs, const std::basic_string<T>& rhs)
+bool operator>(BasicEbsdStringLiteral<T> lhs, const std::basic_string<T>& rhs)
 {
   return lhs.view() > rhs;
 }
 
 template <class T>
-bool operator<=(const std::basic_string<T>& lhs, BasicStringLiteral<T> rhs)
+bool operator<=(const std::basic_string<T>& lhs, BasicEbsdStringLiteral<T> rhs)
 {
   return lhs <= rhs.view();
 }
 
 template <class T>
-bool operator<=(BasicStringLiteral<T> lhs, const std::basic_string<T>& rhs)
+bool operator<=(BasicEbsdStringLiteral<T> lhs, const std::basic_string<T>& rhs)
 {
   return lhs.view() <= rhs;
 }
 
 template <class T>
-bool operator>=(const std::basic_string<T>& lhs, BasicStringLiteral<T> rhs)
+bool operator>=(const std::basic_string<T>& lhs, BasicEbsdStringLiteral<T> rhs)
 {
   return lhs >= rhs.view();
 }
 
 template <class T>
-bool operator>=(BasicStringLiteral<T> lhs, const std::basic_string<T>& rhs)
+bool operator>=(BasicEbsdStringLiteral<T> lhs, const std::basic_string<T>& rhs)
 {
   return lhs.view() >= rhs;
 }
 
-using StringLiteral = BasicStringLiteral<char>;
-using WStringLiteral = BasicStringLiteral<wchar_t>;
-using String16Literal = BasicStringLiteral<char16_t>;
-using String32Literal = BasicStringLiteral<char32_t>;
+template <class T>
+std::ostream& operator<<(std::ostream& os, const BasicEbsdStringLiteral<T>& lhs)
+{
+  os << lhs.view();
+  return os;
+}
+
+using EbsdStringLiteral = BasicEbsdStringLiteral<char>;
+using WEbsdStringLiteral = BasicEbsdStringLiteral<wchar_t>;
+using String16Literal = BasicEbsdStringLiteral<char16_t>;
+using String32Literal = BasicEbsdStringLiteral<char32_t>;
 } // namespace EbsdLib
 
 #if 0
 template <class CharT>
-struct fmt::formatter<nx::core::BasicStringLiteral<CharT>>
+struct fmt::formatter<nx::core::BasicEbsdStringLiteral<CharT>>
 {
   static constexpr const CharT* GetFormatString()
   {
@@ -239,7 +246,7 @@ struct fmt::formatter<nx::core::BasicStringLiteral<CharT>>
     return ctx.begin();
   }
 
-  typename buffer_context<CharT>::iterator format(const nx::core::BasicStringLiteral<CharT>& p, buffer_context<CharT>& ctx) const
+  typename buffer_context<CharT>::iterator format(const nx::core::BasicEbsdStringLiteral<CharT>& p, buffer_context<CharT>& ctx) const
   {
     static constexpr const CharT* formatStr = GetFormatString();
 
