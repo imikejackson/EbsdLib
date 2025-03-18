@@ -15,7 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # set project's name
-project(EbsdLibProj VERSION 1.0.36)
+project(EbsdLibProj VERSION 1.0.37)
 
 # ---------- Setup output Directories -------------------------
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY
@@ -94,7 +94,7 @@ endif()
 set(EbsdLib_USE_GHC_FILESYSTEM OFF)
 
 if(APPLE)
-  exec_program(uname ARGS -v  OUTPUT_VARIABLE DARWIN_VERSION)
+  execute_process(COMMAND uname -v OUTPUT_VARIABLE DARWIN_VERSION)
   string(REGEX MATCH "[0-9]+" DARWIN_VERSION ${DARWIN_VERSION})
   if(DARWIN_VERSION VERSION_LESS 19)
     message(STATUS "The current macOS System is too old to compile and will fail. Please set the EbsdLib_USE_GHC_FILESYSTEM=ON variable to allow Ebsdlib to compile")

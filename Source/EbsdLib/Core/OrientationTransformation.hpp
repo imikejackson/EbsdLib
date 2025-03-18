@@ -1368,24 +1368,46 @@ OutputType qu2ax(const InputType& q, typename Quaternion<typename OutputType::va
   {
     qo[i] = sign * q[i];
   }
-  OutputValueType eps = static_cast<OutputValueType>(1.0e-12L);
+
   OutputValueType omega = static_cast<OutputValueType>(2.0 * acos(qo[w]));
+  // If omega equals zero then return the rotation axis as [001]
+  OutputValueType eps = static_cast<OutputValueType>(1.0e-12L);
   if(omega < eps)
   {
     res[0] = 0.0;
     res[1] = 0.0;
     res[2] = static_cast<OutputValueType>(1.0 * epsijk);
     res[3] = 0.0;
+    return res;
+  }
+
+  if(qo[w] != 0.0)
+  {
+    typename OutputType::value_type mag = sqrt(q[x] * q[x] + q[y] * q[y] + q[z] * q[z]);
+    if(mag == 0.0)
+    {
+      res[0] = 0.0;
+      res[1] = 0.0;
+      res[2] = static_cast<OutputValueType>(1.0 * epsijk);
+      res[3] = 0.0;
+    }
+    else
+    {
+      mag = static_cast<OutputValueType>(1.0 / mag);
+      res[0] = q[x] * mag;
+      res[1] = q[y] * mag;
+      res[2] = q[z] * mag;
+      res[3] = omega;
+    }
   }
   else
   {
-    typename OutputType::value_type mag = 0.0;
-    mag = static_cast<OutputValueType>(1.0 / sqrt(q[x] * q[x] + q[y] * q[y] + q[z] * q[z]));
-    res[0] = q[x] * mag;
-    res[1] = q[y] * mag;
-    res[2] = q[z] * mag;
-    res[3] = omega;
+    res[0] = q[x];
+    res[1] = q[y];
+    res[2] = q[z];
+    res[3] = EbsdLib::Constants::k_PiD;
   }
+
   return res;
 }
 
