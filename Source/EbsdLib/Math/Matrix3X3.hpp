@@ -129,9 +129,9 @@ public:
    * @param rhs
    * @return
    */
-  Matrix3X3& multiplyInPlace(SelfType& rhs)
+  SelfType& multiplyInPlace(SelfType& rhs)
   {
-    Matrix3X3 outMat;
+    SelfType outMat;
     outMat[0] = m_Data[0] * rhs[0] + m_Data[1] * rhs[3] + m_Data[2] * rhs[6];
     outMat[1] = m_Data[0] * rhs[1] + m_Data[1] * rhs[4] + m_Data[2] * rhs[7];
     outMat[2] = m_Data[0] * rhs[2] + m_Data[1] * rhs[5] + m_Data[2] * rhs[8];
@@ -150,9 +150,9 @@ public:
    * @param rhs
    * @param outMat
    */
-  Matrix3X3 operator+(const Matrix3X3& rhs) const
+  SelfType operator+(const Matrix3X3& rhs) const
   {
-    Matrix3X3 outMat;
+    SelfType outMat;
     outMat[0] = m_Data[0] + rhs[0];
     outMat[1] = m_Data[1] + rhs[1];
     outMat[2] = m_Data[2] + rhs[2];
@@ -170,9 +170,9 @@ public:
    * @param rhs
    * @param outMat
    */
-  Matrix3X3 operator-(const Matrix3X3& rhs) const
+  SelfType operator-(const SelfType& rhs) const
   {
-    Matrix3X3 outMat;
+    SelfType outMat;
     outMat[0] = m_Data[0] - rhs[0];
     outMat[1] = m_Data[1] - rhs[1];
     outMat[2] = m_Data[2] - rhs[2];
@@ -217,7 +217,7 @@ public:
    * @brief Multiplies each element of a 3x1 matrix by a scalar value and returns the result
    * @param scalar to multiply each element by.
    */
-  Matrix3X3 operator*(T scalar)
+  SelfType operator*(T scalar)
   {
     return {
         m_Data[0] * scalar, m_Data[1] * scalar, m_Data[2] * scalar, m_Data[3] * scalar, m_Data[4] * scalar, m_Data[5] * scalar, m_Data[6] * scalar, m_Data[7] * scalar, m_Data[8] * scalar,
@@ -230,9 +230,9 @@ public:
    * @param outMat
    */
 
-  Matrix3X3 transpose() const
+  SelfType transpose() const
   {
-    Matrix3X3 outMat;
+    SelfType outMat;
     outMat[0] = m_Data[0];
     outMat[1] = m_Data[3];
     outMat[2] = m_Data[6];
@@ -249,7 +249,7 @@ public:
    * @brief Inverts the 3x3 matrix and returns the result
    * @return outMat
    */
-  void invert()
+  SelfType invert()
   {
     SelfType adjoint = this->adjoint();
     T oneOverDeterminant = 1.0 / this->determinant();
@@ -261,7 +261,7 @@ public:
    * @return outMat
    */
 
-  void adjoint()
+  SelfType adjoint()
   {
     SelfType temp = this->cofactor();
     return temp.transpose();
@@ -274,7 +274,7 @@ public:
 
   SelfType cofactor() const
   {
-    SelfType temp = this->minors3X3();
+    SelfType temp = this->minors();
     SelfType outMat;
 
     // Row 0
@@ -292,14 +292,14 @@ public:
     return outMat;
   }
 
-  /**
+  /**b
    * @brief Calculates the matrix of minors of the 3x3 matrix and places the result into outMat
    * @return outMat
    */
 
-  Matrix3X3 minors()
+  SelfType minors() const
   {
-    Matrix3X3 outMat;
+    SelfType outMat;
     outMat[0] = m_Data[4] * m_Data[8] - m_Data[7] * m_Data[5];
     outMat[1] = m_Data[3] * m_Data[8] - m_Data[6] * m_Data[5];
     outMat[2] = m_Data[3] * m_Data[7] - m_Data[6] * m_Data[4];
@@ -329,7 +329,7 @@ public:
    * @param g
    */
 
-  Matrix3X3 identity()
+  SelfType identity()
   {
     return {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
   }
@@ -339,7 +339,7 @@ public:
    * @param g
    */
 
-  Matrix3X3 normalize() const
+  SelfType normalize() const
   {
     T denom = m_Data[0] * m_Data[0] + m_Data[3] * m_Data[3] + m_Data[6] * m_Data[6];
     if(denom == 0.0)

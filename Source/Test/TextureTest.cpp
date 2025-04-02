@@ -49,6 +49,7 @@
 #include "EbsdLib/LaueOps/TriclinicOps.h"
 #include "EbsdLib/LaueOps/TrigonalLowOps.h"
 #include "EbsdLib/LaueOps/TrigonalOps.h"
+#include "EbsdLib/Math/Matrix3X3.hpp"
 #include "EbsdLib/Texture/StatsGen.hpp"
 #include "EbsdLib/Texture/Texture.hpp"
 
@@ -186,6 +187,27 @@ public:
     TestTextureOdf<TrigonalOps>();
   }
 
+  void TestMatrix3X3()
+  {
+    EbsdLib::Matrix3X3F matrix(1.0f, 2.0f, 3.0, 4.0f, 5.0f, 6.0f, 7.0, 8.0f, 9.0f);
+    matrix[0] = 10.0f;
+    matrix.data()[0] = 12.0f;
+    matrix = matrix * matrix;
+    matrix = matrix.multiplyInPlace(matrix);
+    matrix = matrix + matrix;
+    matrix = matrix - matrix;
+    matrix = matrix * 22.0f;
+
+    matrix = matrix.transpose();
+    matrix = matrix.invert();
+    matrix = matrix.adjoint();
+    matrix = matrix.cofactor();
+    matrix = matrix.minors();
+    float det = matrix.determinant();
+    matrix = matrix.normalize();
+    matrix = matrix.identity();
+  }
+
   void operator()()
   {
     std::cout << "<===== Start " << getNameOfClass() << std::endl;
@@ -193,6 +215,7 @@ public:
     int err = EXIT_SUCCESS;
     DREAM3D_REGISTER_TEST(TestOdfGeneration())
     DREAM3D_REGISTER_TEST(TestMdfGeneration())
+    DREAM3D_REGISTER_TEST(TestMatrix3X3())
   }
 
 public:
