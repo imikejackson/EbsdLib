@@ -73,11 +73,15 @@ static const int k_MdfSize = 5832;
 static const int k_SymOpsCount = 24;
 static const int k_NumMdfBins = 13;
 
-static const double SlipDirections[12][3] = {{0.0, 1.0, -1.0}, {1.0, 0.0, -1.0}, {1.0, -1.0, 0.0}, {1.0, -1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 1.0, 1.0},
-                                             {1.0, 1.0, 0.0},  {0.0, 1.0, 1.0},  {1.0, 0.0, -1.0}, {1.0, 1.0, 0.0},  {1.0, 0.0, 1.0}, {0.0, 1.0, -1.0}};
+static const double SlipDirections[12][3] = { {1.0, -1.0, 0.0}, {-1.0, 1.0, 0.0}, {0.0, -1.0, 1.0},  // DONE
+                                              {1.0, 1.0, 0.0}, {-1.0, 0.0, 1.0}, {0.0, 1.0, 1.0},    // DONE
+                                              {1.0, -1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 0.0, 1.0},  // DONE
+                                              {1.0, 1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, -1.0, 1.0}};  // DONE
 
-static const double SlipPlanes[12][3] = {{1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},  {1.0, 1.0, -1.0}, {1.0, 1.0, -1.0}, {1.0, 1.0, -1.0},
-                                         {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0}, {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}};
+static const double SlipPlanes[12][3] = { {1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},         // DONE
+                                          {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0},        // DONE
+                                          {-1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0},  // DONE
+                                          {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}   };    // DONE
 
 // Rotation Point Group: 432
 // clang-format off
@@ -1017,6 +1021,51 @@ void CubicOps::getSchmidFactorAndSS(double load[3], double plane[3], double dire
 
 double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LD[3]) const
 {
+
+  EbsdLib::Matrix3X3D g1 = OrientationTransformation::qu2om<QuatD, OrientationType>(q1).toGMatrixObj().transpose();
+
+  EbsdLib::Matrix3X3D g2 = OrientationTransformation::qu2om<QuatD, OrientationType>(q2).toGMatrixObj().transpose();
+
+  {
+    using Vector3D = EbsdLib::Matrix3X1D;
+    struct SlipSystem
+    {
+      Vector3D b_crystal;
+      Vector3D n_crystal;
+    };
+
+    std::vector<SlipSystem> slipSystems;// = getFCCSlipSystems(); // size 12
+    for(int i = 0; i < 12; i++)
+    {
+      slipSystems.push_back({{CubicHigh::SlipDirections[i][0], CubicHigh::SlipDirections[i][1], CubicHigh::SlipDirections[i][2]}, {CubicHigh::SlipPlanes[i][0], CubicHigh::SlipPlanes[i][1], CubicHigh::SlipPlanes[i][2]}});
+    }
+    double maxMPrime = 0.0;
+    for(int i = 0; i < 12; ++i)
+    {
+      SlipSystem ss1 = slipSystems[i];
+      for(int j = 0; j < 12; ++j)
+      {
+        SlipSystem ss2 = slipSystems[j];
+
+        Vector3D b1_sample = (g1 * ss1.b_crystal).normalize();
+        Vector3D n1_sample = (g1 * ss1.n_crystal).normalize();
+
+        Vector3D b2_sample = (g2 * ss2.b_crystal).normalize();
+        Vector3D n2_sample = (g2 * ss2.n_crystal).normalize();
+
+        // double cos_phi = b1_sample.dot(b2_sample);
+        // double cos_kappa = n1_sample.dot(n2_sample);
+
+        double cos_phi = b1_sample.cosTheta(n1_sample);
+        double cos_kappa = n1_sample.cosTheta(n2_sample);
+
+        double mPrime = cos_phi * cos_kappa;
+        maxMPrime = std::max(maxMPrime, mPrime);
+      }
+    }
+    std::cout << "EbsdLib v1.0.38: New Algorithm maxMPrime: " << maxMPrime << std::endl;
+  }
+
   EbsdLib::Matrix3X1D hkl1;
   EbsdLib::Matrix3X1D uvw1;
   EbsdLib::Matrix3X1D hkl2;
@@ -1029,12 +1078,6 @@ double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LD[3]) const
   double directionComponent2 = 0, planeComponent2 = 0;
   double planeMisalignment = 0, directionMisalignment = 0;
   int ss1 = 0, ss2 = 0;
-
-  EbsdLib::Matrix3X3D g(OrientationTransformation::qu2om<QuatD, OrientationType>(q1).data());
-  EbsdLib::Matrix3X3D g1 = g.transpose();
-
-  g = EbsdLib::Matrix3X3D(OrientationTransformation::qu2om<QuatD, OrientationType>(q2).data());
-  EbsdLib::Matrix3X3D g2 = g.transpose();
 
   for(int i = 0; i < 12; i++)
   {

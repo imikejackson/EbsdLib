@@ -9,6 +9,7 @@
 #include "EbsdLib/Core/OrientationTransformation.hpp"
 #include "EbsdLib/Core/Quaternion.hpp"
 #include "EbsdLib/EbsdLib.h"
+#include "EbsdLib/LaueOps/CubicOps.h"
 #include "EbsdLib/LaueOps/LaueOps.h"
 #include "EbsdLib/OrientationMath/OrientationConverter.hpp"
 #include "EbsdLib/Utilities/EbsdStringUtils.hpp"
@@ -129,12 +130,119 @@ std::vector<double> ReadDoublesFromCSV(const std::string& filePath)
 }
 
 // -----------------------------------------------------------------------------
-int main(int argc, char* argv[])
+int main2(int argc, char* argv[])
 {
   std::vector<double> q = ReadDoublesFromCSV(argv[1]);
   for(int i = 0; i < q.size(); i=i+8)
   {
     std::cout << (i/8) << ": ";
     v2({q[i], q[i+1], q[i+2], q[i+3]}, {q[i+4], q[i+5], q[i+6], q[i+7]});
+  }
+  return 0;
+}
+
+// -----------------------------------------------------------------------------
+int main(int argc, char* argv[])
+{
+  // Quat for Grain ID:
+  // 1   -0.24675526	0.30400401	-0.13882975	0.90962613
+  // 30  -0.13404281	-0.35873663	-0.022394493	0.92349279
+  // 142 -0.13404283	-0.35873666	-0.022394495	0.92349285
+
+  double rad2Deg = 180.0 / 3.1415926535897932384626433832795;
+  double axisToleranceRad = 3.0;
+  double AngleTolerance = 3.0;
+
+  double LD[3] = {0.0, 0.0, 1.0};
+  CubicOps ops;
+  {
+    std::cout << "#============================================================\n";
+    QuatD q1(0, 0, 0, 1);
+    QuatD q2(0.28867513, 0.28867513, 0.28867513, 0.8660253999999999);
+
+    OrientationD axisAngle = ops.calculateMisorientation(q1, q2);
+    double w = axisAngle[3] * rad2Deg;
+
+    double axisDiff111 = std::acos(std::fabs(axisAngle[0]) * 0.57735f + std::fabs(axisAngle[1]) * 0.57735f + fabs(axisAngle[2]) * 0.57735f);
+    double angDiff60 = std::fabs(w - 60.0f);
+    if(axisDiff111 < axisToleranceRad && angDiff60 < AngleTolerance)
+    {
+      std::cout << "Quat Pair is a Twin: \n";
+    }
+    else
+    {
+      std::cout << "Quat Pair is NOT a Twin: \n";
+      std::cout << "   axisDiff111: " << axisDiff111 << std::endl;
+      std::cout << "     angDiff60: " << angDiff60 << std::endl;
+    }
+    double lusterMorris = ops.getmPrime(q1, q2, LD);
+    std::cout << "LM: " << lusterMorris << std::endl;
+  }
+
+  {
+    std::cout << "#============================================================\n";
+    QuatD q1(-0.24675526, 0.30400401, -0.13882975, 0.90962613);
+    QuatD q2(-0.13404281, -0.35873663, -0.022394493, 0.92349279);
+    OrientationD axisAngle = ops.calculateMisorientation(q1, q2);
+    double w = axisAngle[3] * rad2Deg;
+
+    double axisDiff111 = std::acos(std::fabs(axisAngle[0]) * 0.57735f + std::fabs(axisAngle[1]) * 0.57735f + fabs(axisAngle[2]) * 0.57735f);
+    double angDiff60 = std::fabs(w - 60.0f);
+    if(axisDiff111 < axisToleranceRad && angDiff60 < AngleTolerance)
+    {
+      std::cout << "Quat Pair is a Twin: \n";
+    }
+    else
+    {
+      std::cout << "Quat Pair is NOT a Twin: \n";
+    }
+    double lusterMorris = ops.getmPrime(q1, q2, LD);
+    std::cout << "LM: " << lusterMorris << std::endl;
+  }
+
+  {
+    std::cout << "#============================================================\n";
+    QuatD q1(0.23, -0.34, 0.12, 0.9);
+    QuatD q2(-0.13, 0.14, 0.15, 0.97);
+    OrientationD axisAngle = ops.calculateMisorientation(q1, q2);
+    double w = axisAngle[3] * rad2Deg;
+
+    double axisDiff111 = std::acos(std::fabs(axisAngle[0]) * 0.57735f + std::fabs(axisAngle[1]) * 0.57735f + fabs(axisAngle[2]) * 0.57735f);
+    double angDiff60 = std::fabs(w - 60.0f);
+    std::cout << "axisDiff111: " << axisDiff111 << std::endl;
+    std::cout << "angDiff60: " << angDiff60 << std::endl;
+    if(axisDiff111 < axisToleranceRad && angDiff60 < AngleTolerance)
+    {
+      std::cout << "Quat Pair is a Twin: \n";
+    }
+    else
+    {
+      std::cout << "Quat Pair is NOT a Twin: \n";
+    }
+    double lusterMorris = ops.getmPrime(q1, q2, LD);
+    std::cout << "EbsdLib v1.0.38 Original MPrime: " << lusterMorris << std::endl;
+  }
+
+  {
+    std::cout << "#============================================================\n";
+    QuatD q1(-0.24, -0.23, -0.35, 0.88);
+    QuatD q2(0.02, 0.09, -0.04, 1);
+    OrientationD axisAngle = ops.calculateMisorientation(q1, q2);
+    double w = axisAngle[3] * rad2Deg;
+
+    double axisDiff111 = std::acos(std::fabs(axisAngle[0]) * 0.57735f + std::fabs(axisAngle[1]) * 0.57735f + fabs(axisAngle[2]) * 0.57735f);
+    double angDiff60 = std::fabs(w - 60.0f);
+    std::cout << "axisDiff111: " << axisDiff111 << std::endl;
+    std::cout << "angDiff60: " << angDiff60 << std::endl;
+    if(axisDiff111 < axisToleranceRad && angDiff60 < AngleTolerance)
+    {
+      std::cout << "Quat Pair is a Twin: \n";
+    }
+    else
+    {
+      std::cout << "Quat Pair is NOT a Twin: \n";
+    }
+    double lusterMorris = ops.getmPrime(q1, q2, LD);
+    std::cout << "EbsdLib v1.0.38 Original MPrime: " << lusterMorris << std::endl;
   }
 }

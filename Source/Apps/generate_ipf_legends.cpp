@@ -34,7 +34,8 @@
 using namespace EbsdLib;
 
 // const std::string k_Output_Dir(UnitTest::DataDir + "/IPF_Legend/");
-const std::string k_Output_Dir(UnitTest::TestTempDir + "/IPF_Legend/");
+// const std::string k_Output_Dir(UnitTest::TestTempDir + "/IPF_Legend/");
+const std::string k_Output_Dir("/tmp/IPF_Legend/");
 
 using EbsdDoubleArrayType = EbsdDataArray<float>;
 using EbsdDoubleArrayPointerType = EbsdDoubleArrayType::Pointer;
@@ -129,6 +130,10 @@ public:
       std::getline(in, buf);
 
       tokens = EbsdStringUtils::split(buf, delim);
+      if(tokens.empty())
+      {
+        break;
+      }
       double value = std::atof(tokens[0].c_str());
       orientations.push_back(value);
       value = std::atof(tokens[1].c_str());
@@ -274,13 +279,22 @@ void GeneratePoleFigures(LaueOps& ops, int symType)
 
   // Read in the Quats File
   ConvertOrientations convertor;
-  auto outputOrientations = convertor.execute(k_QuatsFilePath, "eulers_000_1_deg.csv", ",", "qu2eu", true);
+  auto outputOrientations = convertor.execute("/Users/mjackson/Desktop/mtex_match_test.csv", "eulers_000_1_deg.csv", ",", "qu2eu", true);
+
+  // EbsdDoubleArrayPointerType outputOrientations = EbsdDoubleArrayType::CreateArray(2, {3}, "Input", true);
+  // outputOrientations->setValue(0, 0.275256);
+  // outputOrientations->setValue(1,1.49098);
+  // outputOrientations->setValue(2,3.24718);
+  // outputOrientations->setValue(3, 5.46724);
+  // outputOrientations->setValue(4, 1.35441);
+  // outputOrientations->setValue(5, 2.7845);
+
   auto poleFigureNames = ops.getDefaultPoleFigureNames();
 
   PoleFigureConfiguration_t config;
   config.eulers = outputOrientations.get();
-  config.imageDim = 512;
-  config.lambertDim = 72;
+  config.imageDim = 365;
+  config.lambertDim = 16;
   config.numColors = 32;
   config.minScale = 0.0;
   config.maxScale = 100.0;
@@ -368,11 +382,13 @@ int main(int argc, char* argv[])
         {1.0F, 0.0F, 1.0F},                    // Flesh
     };
     std::vector<std::string> colorNames{"Red", "Green", "Aqua", "Blue", "Yellow", "Pink", "Flesh"};
-    GenerateTestIPFImages(referenceDirections, colorNames, 10);
-    // Generate Pole Figures for the Input Test Orientations
+    // GenerateTestIPFImages(referenceDirections, colorNames, 10);
+    //  Generate Pole Figures for the Input Test Orientations
     GeneratePoleFigures(ops, 2);
   }
 
+  if(true)
+    return 1;
   {
     TriclinicOps ops;
     auto legend = ops.generateIPFTriangleLegend(imageDim, true);
