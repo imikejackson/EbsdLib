@@ -73,15 +73,15 @@ static const int k_MdfSize = 5832;
 static const int k_SymOpsCount = 24;
 static const int k_NumMdfBins = 13;
 
-static const double SlipDirections[12][3] = { {1.0, -1.0, 0.0}, {-1.0, 1.0, 0.0}, {0.0, -1.0, 1.0},  // DONE
-                                              {1.0, 1.0, 0.0}, {-1.0, 0.0, 1.0}, {0.0, 1.0, 1.0},    // DONE
-                                              {1.0, -1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 0.0, 1.0},  // DONE
-                                              {1.0, 1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, -1.0, 1.0}};  // DONE
+static const double SlipDirections[12][3] = {{1.0, -1.0, 0.0}, {-1.0, 1.0, 0.0}, {0.0, -1.0, 1.0},  // DONE
+                                             {1.0, 1.0, 0.0},  {-1.0, 0.0, 1.0}, {0.0, 1.0, 1.0},   // DONE
+                                             {1.0, -1.0, 0.0}, {1.0, 0.0, 1.0},  {0.0, 0.0, 1.0},   // DONE
+                                             {1.0, 1.0, 0.0},  {1.0, 0.0, 1.0},  {0.0, -1.0, 1.0}}; // DONE
 
-static const double SlipPlanes[12][3] = { {1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},         // DONE
-                                          {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0},        // DONE
-                                          {-1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0},  // DONE
-                                          {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}   };    // DONE
+static const double SlipPlanes[12][3] = {{1.0, 1.0, 1.0},    {1.0, 1.0, 1.0},    {1.0, 1.0, 1.0},    // DONE
+                                         {1.0, -1.0, 1.0},   {1.0, -1.0, 1.0},   {1.0, -1.0, 1.0},   // DONE
+                                         {-1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0}, // DONE
+                                         {-1.0, 1.0, 1.0},   {-1.0, 1.0, 1.0},   {-1.0, 1.0, 1.0}};  // DONE
 
 // Rotation Point Group: 432
 // clang-format off
@@ -1034,10 +1034,11 @@ double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LD[3]) const
       Vector3D n_crystal;
     };
 
-    std::vector<SlipSystem> slipSystems;// = getFCCSlipSystems(); // size 12
+    std::vector<SlipSystem> slipSystems; // = getFCCSlipSystems(); // size 12
     for(int i = 0; i < 12; i++)
     {
-      slipSystems.push_back({{CubicHigh::SlipDirections[i][0], CubicHigh::SlipDirections[i][1], CubicHigh::SlipDirections[i][2]}, {CubicHigh::SlipPlanes[i][0], CubicHigh::SlipPlanes[i][1], CubicHigh::SlipPlanes[i][2]}});
+      slipSystems.push_back({{CubicHigh::SlipDirections[i][0], CubicHigh::SlipDirections[i][1], CubicHigh::SlipDirections[i][2]},
+                             {CubicHigh::SlipPlanes[i][0], CubicHigh::SlipPlanes[i][1], CubicHigh::SlipPlanes[i][2]}});
     }
     double maxMPrime = 0.0;
     for(int i = 0; i < 12; ++i)

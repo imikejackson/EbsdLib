@@ -133,10 +133,10 @@ std::vector<double> ReadDoublesFromCSV(const std::string& filePath)
 int main2(int argc, char* argv[])
 {
   std::vector<double> q = ReadDoublesFromCSV(argv[1]);
-  for(int i = 0; i < q.size(); i=i+8)
+  for(int i = 0; i < q.size(); i = i + 8)
   {
-    std::cout << (i/8) << ": ";
-    v2({q[i], q[i+1], q[i+2], q[i+3]}, {q[i+4], q[i+5], q[i+6], q[i+7]});
+    std::cout << (i / 8) << ": ";
+    v2({q[i], q[i + 1], q[i + 2], q[i + 3]}, {q[i + 4], q[i + 5], q[i + 6], q[i + 7]});
   }
   return 0;
 }
