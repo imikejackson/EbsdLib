@@ -66,11 +66,15 @@ public:
   Quaternion& operator=(const Quaternion&) = default;
   Quaternion& operator=(Quaternion&&) noexcept = default;
 
+  /**
+   * @brief Creates a Quaternion that is an "Identity"
+   * @param size This MUST be 4 (this is for historical reasons)
+   */
   Quaternion(size_type size)
   {
     if(size != 4)
     {
-      throw std::runtime_error("Quaternion Contructors needs argument of '4' for size.");
+      throw std::runtime_error("Quaternion Constructor needs argument of '4' for size.");
     }
   }
 
@@ -100,6 +104,9 @@ public:
   //    }
   //  }
 
+  /**
+   * @brief Converts this quaternion to a Quaternion that uses a different primitve type such as float or double.
+   */
   template <class U, class = std::enable_if_t<std::is_floating_point_v<U> && std::numeric_limits<U>::has_infinity>>
   Quaternion<U> to() const
   {
@@ -449,7 +456,7 @@ public:
   }
 
   /**
-   * @brief heck if this is a unit quaternion
+   * @brief check if this is a unit quaternion
    * @param tolerance
    * @return
    */
@@ -459,11 +466,11 @@ public:
   }
 
   /**
-   * @brief UnitQuaternion (Normalize) Converts the quaternion into its normalized values (x/L, y/L, z/L, w/L) where "L"
+   * @brief Normalize: Converts the quaternion into its normalized values (x/L, y/L, z/L, w/L) where "L"
    * is the "length" of the quaternion
    * @return qr
    */
-  Quaternion unitQuaternion() const
+  Quaternion normalize() const
   {
     T l = length();
     return {m_X / l, m_Y / l, m_Z / l, m_W / l};
@@ -550,6 +557,35 @@ public:
     rotatedVector[2] = static_cast<T>(2.0) * temp2[2] + inputVector[2];
 
     return rotatedVector;
+  }
+
+  /**
+   * @brief Ensures this quaternion represents an orientation that is located in the northern hemisphere.
+   *
+   * NOTE: This is done IN PLACE!!
+   */
+  void positiveOrientation()
+  {
+    if(m_W < static_cast<T>(0.0))
+    {
+      m_X = -m_X;
+      m_Y = -m_Y;
+      m_Z = -m_Z;
+      m_W = -m_W;
+    }
+  }
+
+  /**
+   * @brief Returns a new quaternion that represents an orientation that is located in the northern hemisphere
+   * @return Copy of Quaternion
+   */
+  Quaternion getPositiveOrientation() const
+  {
+    if(m_W < static_cast<T>(0.0))
+    {
+      return {-m_X, -m_Y, -m_Z, -m_W};
+    }
+    return {m_X, m_Y, m_Z, m_W};
   }
 
 private:

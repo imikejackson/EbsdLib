@@ -1,5 +1,5 @@
 /* ============================================================================
- * Copyright (c) 2009-2016 BlueQuartz Software, LLC
+ * Copyright (c) 2009-2025 BlueQuartz Software, LLC
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -343,12 +343,6 @@ int H5AngVolumeReader::loadData(int64_t xpoints, int64_t ypoints, int64_t zpoint
     xpointsslice = reader->getNumEvenCols();
     ypointsslice = reader->getNumRows();
     float* euler1Ptr = reader->getPhi1Pointer();
-    if(nullptr == euler1Ptr)
-    {
-      setErrorCode(-99090);
-      setErrorMessage("Euler1 Pointer was nullptr from Reader");
-      return getErrorCode();
-    }
     float* euler2Ptr = reader->getPhiPointer();
     float* euler3Ptr = reader->getPhi2Pointer();
     float* xPtr = reader->getXPositionPointer();

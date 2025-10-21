@@ -1,5 +1,5 @@
 /* ============================================================================
- * Copyright (c) 2009-2016 BlueQuartz Software, LLC
+ * Copyright (c) 2009-2025 BlueQuartz Software, LLC
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -250,7 +250,7 @@ public:
     p.w() = 2.0f;
     float length = p.length();
     DREAM3D_REQUIRE_EQUAL(length, 4.0);
-    p = p.unitQuaternion();
+    p = p.normalize();
     DREAM3D_REQUIRE_EQUAL(p.x(), 0.5)
     DREAM3D_REQUIRE_EQUAL(p.y(), 0.5)
     DREAM3D_REQUIRE_EQUAL(p.z(), 0.5)

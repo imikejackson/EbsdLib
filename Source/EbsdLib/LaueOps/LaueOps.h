@@ -1,5 +1,5 @@
 /* ============================================================================
- * Copyright (c) 2009-2016 BlueQuartz Software, LLC
+ * Copyright (c) 2009-2025 BlueQuartz Software, LLC
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -43,7 +43,6 @@
 #include "EbsdLib/Core/OrientationTransformation.hpp"
 #include "EbsdLib/Core/Quaternion.hpp"
 #include "EbsdLib/EbsdLib.h"
-#include "EbsdLib/Math/Matrix3X1.hpp"
 #include "EbsdLib/Math/Matrix3X3.hpp"
 #include "EbsdLib/Utilities/PoleFigureUtilities.h"
 
@@ -141,6 +140,12 @@ public:
   virtual std::string getRotationPointGroup() const = 0;
 
   /**
+   * @brief returns the value of the crystallographic point group
+   * @return
+   */
+  virtual int getPointGroup() const = 0;
+
+  /**
    * @brief Returns the number of bins in each of the 3 dimensions
    * @return
    */
@@ -179,6 +184,7 @@ public:
   /**
    * @brief Retrieves a specific Symmetry Operator for a giving index
    * @param i The index from the Symmetry Operator Array to retrieve
+   * @param g The g matrix
    * @return void or a Matrix3X3 object.
    */
   virtual void getMatSymOp(int i, double g[3][3]) const = 0;
@@ -208,10 +214,10 @@ public:
    * @param qr Input Quaternion
    * @return
    */
-  virtual QuatD getFZQuat(const QuatD& qr) const;
+  virtual QuatD getFZQuat(const QuatD& qr) const = 0;
 
   /**
-   * @brief getMisoBin Returns the misorientation bin that the input Rodregues vector lies in.
+   * @brief getMisoBin Returns the misorientation bin that the input Rodrigues vector lies in.
    * @param rod
    * @return
    */
@@ -243,6 +249,8 @@ public:
 
   virtual void generateSphereCoordsFromEulers(EbsdLib::FloatArrayType* eulers, EbsdLib::FloatArrayType* c1, EbsdLib::FloatArrayType* c2, EbsdLib::FloatArrayType* c3) const = 0;
 
+  static void RodriguesComposition(OrientationD sigma, OrientationD& rod);
+
   /**
    * @brief
    * @param eta Optional input value only needed for the "Cubic" Laue classes
@@ -251,24 +259,24 @@ public:
   virtual std::array<double, 3> getIpfColorAngleLimits(double eta) const = 0;
 
   /**
-   * @brief generateIPFColor Generates an ARGB Color from a Euler Angle and Reference Direction
+   * @brief generateIPFColor Generates an ARGB Color from an Euler Angle and Reference Direction
    * @param eulers Pointer to the 3 component Euler Angle
    * @param refDir Pointer to the 3 Component Reference Direction
-   * @param rgb [output] The pointer to store the RGB value
    * @param convertDegrees Are the input angles in Degrees
+   * @return rgb [output] The pointer to store the RGB value
    */
   virtual EbsdLib::Rgb generateIPFColor(double* eulers, double* refDir, bool convertDegrees) const = 0;
 
   /**
-   * @brief generateIPFColor Generates an ARGB Color from a Euler Angle and Reference Direction
+   * @brief generateIPFColor Generates an ARGB Color from an Euler Angle and Reference Direction
    * @param e0 First component of the Euler Angle
    * @param e1 Second component of the Euler Angle
    * @param e2 Third component of the Euler Angle
    * @param dir0 First component of the Reference Direction
    * @param dir1 Second component of the Reference Direction
    * @param dir2 Third component of the Reference Direction
-   * @param rgb [output] The pointer to store the RGB value
    * @param convertDegrees Are the input angles in Degrees
+   * @return rgb [output] The pointer to store the RGB value
    */
   virtual EbsdLib::Rgb generateIPFColor(double e0, double e1, double e2, double dir0, double dir1, double dir2, bool convertDegrees) const = 0;
 
@@ -277,14 +285,14 @@ public:
    * @param r1 First component of the Rodrigues Vector
    * @param r2 Second component of the Rodrigues Vector
    * @param r3 Third component of the Rodrigues Vector
-   * @param rgb [output] The pointer to store the RGB value
+   * @return rgb [output] The pointer to store the RGB value
    */
   virtual EbsdLib::Rgb generateRodriguesColor(double r1, double r2, double r3) const = 0;
 
   /**
    * @brief generateMisorientationColor Generates a color based on the method developed by C. Schuh and S. Patala.
    * @param q A Quaternion representing the crystal direction
-   * @param refDir A Quaternion representing the sample reference direction
+   * @param refFrame A Quaternion representing the sample reference direction
    * @return A EbsdLib::Rgb value
    */
   virtual EbsdLib::Rgb generateMisorientationColor(const QuatD& q, const QuatD& refFrame) const;
@@ -292,9 +300,7 @@ public:
   /**
    * @brief generatePoleFigure This method will generate a number of pole figures for this crystal symmetry and the Euler
    * angles that are passed in.
-   * @param eulers The Euler Angles to generate the pole figure from.
-   * @param imageSize The size in Pixels of the final RGB Image.
-   * @param numColors The number of colors to use in the RGB Image. Less colors can give the effect of contouring.
+   * @param config The Pole Figure configuration struct
    * @return A std::vector of EbsdLib::UInt8ArrayType pointers where each one represents a 2D RGB array that can be used to initialize
    * an image object from other libraries and written out to disk.
    */
@@ -312,27 +318,175 @@ public:
    */
   virtual EbsdLib::UInt8ArrayType::Pointer generateIPFTriangleLegend(int imageDim, bool generateEntirePlane) const = 0;
 
+  enum class FZType : int32_t
+  {
+    Anorthic = 0, // Triclinic
+    Cyclic = 1,
+    Dihedral = 2,
+    Tetrahedral = 3,
+    Octahedral = 4
+  };
+
+  enum class AxisOrderingType : int32_t
+  {
+    None = 0,
+    TwoFold = 2,
+    ThreeFold = 3,
+    FourFold = 4,
+    SixFold = 6,
+    EightFold = 8,
+    TenFold = 10,
+    TwelveFold = 12
+  };
+
+  /**
+   * @brief Returns the given enumeration value as a string
+   * @param value
+   * @return
+   */
+  static std::string FZTypeToString(FZType value);
+
+  /**
+   * @brief Returns the given enumeration value as a string
+   * @param value
+   * @return
+   */
+  static std::string AxisOrderingTypeToString(AxisOrderingType value);
+
+  /**
+   * @brief  Returns the Fundamental Zone type
+   * @return
+   */
+  FZType getFZType() const;
+
+  /**
+   * @brief Returns the Axis Ordering Type
+   * @return
+   */
+  AxisOrderingType getAxisOrderingType() const;
+
+  /**
+   * @brief Determines if the given 4 component Rodrigues Vector is inside a cyclic fundamental zone.
+   *
+   * Be sure that the AxisOrderingType is NOT NONE otherwise undefined behavior will occur
+   * @param rod 4 Component Rodrigues Vector
+   * @param fzType
+   * @param fzType
+   * @param order The Axis Ordering Type
+   * @return
+   */
+  static bool InsideCyclicFZ(const OrientationD& rod, FZType fzType, AxisOrderingType order);
+
+  /**
+   * @brief Determines if the given 4 component Rodrigues Vector is inside a dihedral fundamental zone
+   * @param rod 4 Component Rodrigues Vector
+   * @param order The Axis Ordering Type
+   * @return
+   */
+  static bool InsideDihedralFZ(const OrientationD& rod, AxisOrderingType order);
+
+  /**
+   * @brief Determines if the given 4 component Rodrigues Vector is inside a cubic fundamental zone
+   * @param rod 4 Component Rodrigues Vector
+   * @param fzType The Fundamental Zone type
+   * @return
+   */
+  static bool InsideCubicFZ(const OrientationD& rod, FZType fzType);
+
+  /**
+   * @brief Determines if the given 4 component Rodrigues Vector is inside the fundamental zone
+   * @param rod 4 Component Rodrigues Vector
+   * @param fzType The Fundamental Zone type
+   * @param order The Axis Ordering Type
+   * @return
+   */
+  static bool IsInsideFZ(const OrientationD& rod, FZType fzType, AxisOrderingType order);
+
+  /**
+   * @brief Determines if the given Quaternion Vector is inside the fundamental zone.
+   *
+   * As part of this check, the passed in Quaternion is normalized before calling the Rodrigues
+   * version of this function.
+   * @param quat Input Quaternion
+   * @param fzType The Fundamental Zone type
+   * @param order The Axis Ordering Type
+   * @return
+   */
+  static bool IsInsideFZ(const QuatD& quat, FZType fzType, AxisOrderingType order);
+
+  /**
+   * @brief Returns if the given Quaternion is within the Rodrigues Fundamental Zone (RFZ)
+   * @param quat Input Quaternion
+   * @return
+   */
+  virtual bool isInsideFZ(const QuatD& quat) const = 0;
+
+  /**
+   * @brief Returns if the given Rodrigues vector is within the Rodrigues Fundamental Zone (RFZ)
+   * @param rod Input Rodrigues Vector
+   * @return
+   */
+  virtual bool isInsideFZ(const OrientationD& rod) const = 0;
+
 protected:
   LaueOps();
 
   /**
    * @brief calculateMisorientationInternal
-   * @param quatsym The Symmetry Quarternions from the specific Laue class
-   * @param numsym The number of Symmetry Quaternions
+   * @param quatsym The Symmetry Quarternion from the specific Laue class
    * @param q1 Input Quaternion 1
    * @param q2 Input Quaternion 2
    * @return Returns Axis-Angle <XYZ>W form.
    */
   virtual OrientationD calculateMisorientationInternal(const std::vector<QuatD>& quatsym, const QuatD& q1, const QuatD& q2) const;
 
+  /**
+   * @brief
+   * @param rodsym
+   * @param rod
+   * @return
+   */
   OrientationType _calcRodNearestOrigin(const std::vector<OrientationD>& rodsym, const OrientationType& rod) const;
 
+  /**
+   * @brief
+   * @param quatsym
+   * @param q1
+   * @param q2
+   * @return
+   */
   QuatD _calcNearestQuat(const std::vector<QuatD>& quatsym, const QuatD& q1, const QuatD& q2) const;
 
-  QuatD _calcQuatNearestOrigin(const std::vector<QuatD>& quatsym, const QuatD& qr) const;
-
+  /**
+   * @brief
+   * @param dim
+   * @param bins
+   * @param step
+   * @param homochoric
+   * @return
+   */
   int _calcMisoBin(double dim[3], double bins[3], double step[3], const OrientationType& homochoric) const;
+
+  /**
+   * @brief
+   * @param random
+   * @param init
+   * @param step
+   * @param phi
+   * @param r1
+   * @param r2
+   * @param r3
+   */
   void _calcDetermineHomochoricValues(double random[3], double init[3], double step[3], int32_t phi[3], double& r1, double& r2, double& r3) const;
+
+  /**
+   * @brief
+   * @param dim
+   * @param bins
+   * @param step
+   * @param homochoric
+   * @return
+   */
   int _calcODFBin(double dim[3], double bins[3], double step[3], const OrientationType& homochoric) const;
 
   /**
@@ -341,12 +495,23 @@ protected:
    * @param eulers
    * @param refDir
    * @param deg2Rad
-   * @param etaMin
-   * @param etaMax
-   * @param chiMax
    * @return
    */
-  EbsdLib::Rgb computeIPFColor(double* eulers, double* refDir, bool deg2Rad) const;
+  EbsdLib::Rgb computeIPFColor(double* eulers, double* refDir, bool degToRad) const;
+
+  /**
+   * @brief Converts in input Quaternion into a version that is inside the fundamental zone.
+   *
+   * As part of the algorithm, the Quaternion is normalized before any other orientation
+   * transformations are performed. If the scalar part of the Quaternion is negative, then
+   * the entire Quaternion is negated.
+   * @param quatsym The symmetry operators
+   * @param qr The input quaternion. Calling code does not need to normalize this first.
+   * @param fzType The type of fundamental zone
+   * @param order The Axis orider of the symmetry
+   * @return
+   */
+  static QuatD ConvertToFZ(const std::vector<QuatD>& quatsym, const QuatD& qr, FZType fzType, AxisOrderingType order);
 
 public:
   LaueOps(const LaueOps&) = delete;            // Copy Constructor Not Implemented
@@ -354,3 +519,71 @@ public:
   LaueOps& operator=(const LaueOps&) = delete; // Copy Assignment Not Implemented
   LaueOps& operator=(LaueOps&&) = delete;      // Move Assignment Not Implemented
 };
+
+namespace laue_ops
+{
+
+constexpr std::array<LaueOps::FZType, 32> FZtarray = {
+    LaueOps::FZType::Anorthic, LaueOps::FZType::Anorthic,    LaueOps::FZType::Cyclic,      LaueOps::FZType::Cyclic,     LaueOps::FZType::Cyclic,   // 0-4
+    LaueOps::FZType::Dihedral, LaueOps::FZType::Dihedral,    LaueOps::FZType::Dihedral,    LaueOps::FZType::Cyclic,     LaueOps::FZType::Cyclic,   // 5-9
+    LaueOps::FZType::Cyclic,   LaueOps::FZType::Dihedral,    LaueOps::FZType::Dihedral,    LaueOps::FZType::Dihedral,   LaueOps::FZType::Dihedral, // 10-14
+    LaueOps::FZType::Cyclic,   LaueOps::FZType::Cyclic,      LaueOps::FZType::Dihedral,    LaueOps::FZType::Dihedral,   LaueOps::FZType::Dihedral, // 15-19
+    LaueOps::FZType::Cyclic,   LaueOps::FZType::Cyclic,      LaueOps::FZType::Cyclic,      LaueOps::FZType::Dihedral,   LaueOps::FZType::Dihedral,    LaueOps::FZType::Dihedral,
+    LaueOps::FZType::Dihedral, LaueOps::FZType::Tetrahedral, LaueOps::FZType::Tetrahedral, LaueOps::FZType::Octahedral, LaueOps::FZType::Tetrahedral, LaueOps::FZType::Octahedral};
+
+constexpr std::array<LaueOps::AxisOrderingType, 32> FZoarray = {LaueOps::AxisOrderingType::None,      LaueOps::AxisOrderingType::None,      LaueOps::AxisOrderingType::TwoFold,
+                                                                LaueOps::AxisOrderingType::TwoFold,   LaueOps::AxisOrderingType::TwoFold, // 0-4
+                                                                LaueOps::AxisOrderingType::TwoFold,   LaueOps::AxisOrderingType::TwoFold,   LaueOps::AxisOrderingType::TwoFold,
+                                                                LaueOps::AxisOrderingType::FourFold,  LaueOps::AxisOrderingType::FourFold, // 5-9
+                                                                LaueOps::AxisOrderingType::FourFold,  LaueOps::AxisOrderingType::FourFold,  LaueOps::AxisOrderingType::FourFold,
+                                                                LaueOps::AxisOrderingType::FourFold,  LaueOps::AxisOrderingType::FourFold, // 10-14
+                                                                LaueOps::AxisOrderingType::ThreeFold, LaueOps::AxisOrderingType::ThreeFold, LaueOps::AxisOrderingType::ThreeFold,
+                                                                LaueOps::AxisOrderingType::ThreeFold, LaueOps::AxisOrderingType::ThreeFold, // 15-19
+                                                                LaueOps::AxisOrderingType::SixFold,   LaueOps::AxisOrderingType::SixFold,   LaueOps::AxisOrderingType::SixFold,
+                                                                LaueOps::AxisOrderingType::SixFold,   LaueOps::AxisOrderingType::SixFold,   LaueOps::AxisOrderingType::SixFold,
+                                                                LaueOps::AxisOrderingType::SixFold,   LaueOps::AxisOrderingType::None,      LaueOps::AxisOrderingType::None,
+                                                                LaueOps::AxisOrderingType::None,      LaueOps::AxisOrderingType::None,      LaueOps::AxisOrderingType::None};
+
+} // namespace laue_ops
+
+/*
+ * @brief Master Table of Crystallographic Information
+ * This is formatted as a MarkDown with LaTeX formatting
+
+|  # | Point Group (H–M) | Rotation Point Group | Space Group No(s). | Schoenflies   | Crystal system | Laue class  | Laue Ops |
+| -: | ----------------- | -------------------- | ------------------ | ------------- | -------------- | ----------- | ---------|
+|  1 | 1                 | 1                    | 1                  | C₁            | Triclinic      | (\bar{1})   | TriclinicOps |
+|  2 | (\bar{1})         | 1                    | 2                  | C(_i)         | Triclinic      | (\bar{1})   |
+|  3 | 2                 | 2                    | 3–5                | C₂            | Monoclinic     | 2/m         |
+|  4 | m                 | 1                    | 6–9                | C(_s)         | Monoclinic     | 2/m         |
+|  5 | 2/m               | 2                    | 10–15              | C(_{2h})      | Monoclinic     | 2/m         | MonoclinicOps |
+|  6 | 222               | 222                  | 16–24              | D₂            | Orthorhombic   | mmm         |
+|  7 | mm2               | 2                    | 25–46              | C(_{2v})      | Orthorhombic   | mmm         |
+|  8 | mmm               | 222                  | 47–74              | D(_{2h})      | Orthorhombic   | mmm         | OrthorhombicOps |
+|  9 | 4                 | 4                    | 75–80              | C₄            | Tetragonal     | 4/m         |
+| 10 | (\bar{4})         | 2                    | 81–82              | S₄            | Tetragonal     | 4/m         |
+| 11 | 4/m               | 4                    | 83–88              | C(_{4h})      | Tetragonal     | 4/m         | TetragonalLowOps |
+| 12 | 422               | 422                  | 89–98              | D₄            | Tetragonal     | 4/mmm       |
+| 13 | 4mm               | 4                    | 99–110             | C(_{4v})      | Tetragonal     | 4/mmm       |
+| 14 | (\bar{4}2m)       | 222                  | 111–122            | D(_{2d})      | Tetragonal     | 4/mmm       |
+| 15 | 4/mmm             | 422                  | 123–142            | D(_{4h})      | Tetragonal     | 4/mmm       | TetragonalOps |
+| 16 | 3                 | 3                    | 143–146            | C₃            | Trigonal       | (\bar{3})   |
+| 17 | (\bar{3})         | 3                    | 147–148            | C(_{3i}) (S₆) | Trigonal       | (\bar{3})   | TrigonalLowOps |
+| 18 | 32                | 32                   | 149–155            | D₃            | Trigonal       | (\bar{3}m)  |
+| 19 | 3m                | 3                    | 156–161            | C(_{3v})      | Trigonal       | (\bar{3}m)  |
+| 20 | (\bar{3}m)        | 32                   | 162–167            | D(_{3d})      | Trigonal       | (\bar{3}m)  | TrigonalOps |
+| 21 | 6                 | 6                    | 168–173            | C₆            | Hexagonal      | 6/m         |
+| 22 | (\bar{6})         | 3                    | 174                | C(_{3h})      | Hexagonal      | 6/m         |
+| 23 | 6/m               | 6                    | 175–176            | C(_{6h})      | Hexagonal      | 6/m         | HexagonalLowOps |
+| 24 | 622               | 622                  | 177–182            | D₆            | Hexagonal      | 6/mmm       |
+| 25 | 6mm               | 6                    | 183–186            | C(_{6v})      | Hexagonal      | 6/mmm       |
+| 26 | (\bar{6}m2)       | 32                   | 187–190            | D(_{3h})      | Hexagonal      | 6/mmm       |
+| 27 | 6/mmm             | 622                  | 191–194            | D(_{6h})      | Hexagonal      | 6/mmm       | HexagonalOps |
+| 28 | 23                | 23                   | 195–199            | T             | Cubic          | m(\bar{3})  |
+| 29 | m(\bar{3})        | 23                   | 200–206            | T(_h)         | Cubic          | m(\bar{3})  | CubicLowOps |
+| 30 | 432               | 432                  | 207–214            | O             | Cubic          | m(\bar{3})m |
+| 31 | (\bar{4}3m)       | 23                   | 215–220            | T(_d)         | Cubic          | m(\bar{3})m |
+| 32 | m(\bar{3})m       | 432                  | 221–230            | O(_h)         | Cubic          | m(\bar{3})m | CubicOps |
+
+
+*/

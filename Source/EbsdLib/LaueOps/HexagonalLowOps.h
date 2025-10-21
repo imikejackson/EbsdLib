@@ -1,5 +1,5 @@
 /* ============================================================================
- * Copyright (c) 2009-2016 BlueQuartz Software, LLC
+ * Copyright (c) 2009-2025 BlueQuartz Software, LLC
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -122,7 +122,13 @@ public:
    * @brief Returns the Rotation Point Group for the LaueClass.
    * @return
    */
-  virtual std::string getRotationPointGroup() const override;
+  std::string getRotationPointGroup() const override;
+
+  /**
+   * @brief Returns the Rotation Point Group for the LaueClass.
+   * @return
+   */
+  int getPointGroup() const override;
 
   /**
    * @brief Returns the number of bins in each of the 3 dimensions
@@ -239,6 +245,20 @@ public:
    * @return
    */
   EbsdLib::UInt8ArrayType::Pointer generateIPFTriangleLegend(int imageDim, bool generateEntirePlane) const override;
+
+  /**
+   * @brief Returns if the given Quaternion is within the Rodrigues Fundamental Zone (RFZ)
+   * @param quat Input Quaternion
+   * @return
+   */
+  bool isInsideFZ(const QuatD& quat) const override;
+
+  /**
+   * @brief Returns if the given Rodrigues vector is within the Rodrigues Fundamental Zone (RFZ)
+   * @param rod Input Rodrigues Vector
+   * @return
+   */
+  bool isInsideFZ(const OrientationD& rod) const override;
 
 protected:
 public:

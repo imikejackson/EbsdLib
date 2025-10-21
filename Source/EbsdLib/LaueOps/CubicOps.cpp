@@ -1,5 +1,5 @@
 /* ============================================================================
- * Copyright (c) 2009-2016 BlueQuartz Software, LLC
+ * Copyright (c) 2009-2025 BlueQuartz Software, LLC
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -313,6 +313,24 @@ std::string CubicOps::getSymmetryName() const
 std::string CubicOps::getRotationPointGroup() const
 {
   return "432";
+}
+
+// -----------------------------------------------------------------------------
+int CubicOps::getPointGroup() const
+{
+  return 32;
+}
+
+// -----------------------------------------------------------------------------
+bool CubicOps::isInsideFZ(const QuatD& quat) const
+{
+  return IsInsideFZ(quat, getFZType(), getAxisOrderingType());
+}
+
+// -----------------------------------------------------------------------------
+bool CubicOps::isInsideFZ(const OrientationD& rod) const
+{
+  return IsInsideFZ(rod, getFZType(), getAxisOrderingType());
 }
 
 // -----------------------------------------------------------------------------
@@ -721,7 +739,9 @@ QuatF CubicOps::getNearestQuat(const QuatF& q1f, const QuatF& q2f) const
 
 QuatD CubicOps::getFZQuat(const QuatD& qr) const
 {
-  return _calcQuatNearestOrigin(CubicHigh::QuatSym, qr);
+  LaueOps::FZType fzType = laue_ops::FZtarray[getPointGroup() - 1];
+  LaueOps::AxisOrderingType orderingType = laue_ops::FZoarray[getPointGroup() - 1];
+  return ConvertToFZ(CubicHigh::QuatSym, qr, fzType, orderingType);
 }
 
 // -----------------------------------------------------------------------------

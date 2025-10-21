@@ -1,5 +1,5 @@
 /* ============================================================================
- * Copyright (c) 2009-2016 BlueQuartz Software, LLC
+ * Copyright (c) 2009-2025 BlueQuartz Software, LLC
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -185,6 +185,24 @@ std::string TrigonalLowOps::getRotationPointGroup() const
   return "3";
 }
 
+// -----------------------------------------------------------------------------
+int TrigonalLowOps::getPointGroup() const
+{
+  return 17;
+}
+
+// -----------------------------------------------------------------------------
+bool TrigonalLowOps::isInsideFZ(const QuatD& quat) const
+{
+  return IsInsideFZ(quat, getFZType(), getAxisOrderingType());
+}
+
+// -----------------------------------------------------------------------------
+bool TrigonalLowOps::isInsideFZ(const OrientationD& rod) const
+{
+  return IsInsideFZ(rod, getFZType(), getAxisOrderingType());
+}
+
 OrientationD TrigonalLowOps::calculateMisorientation(const QuatD& q1, const QuatD& q2) const
 {
   return calculateMisorientationInternal(TrigonalLow::QuatSym, q1, q2);
@@ -318,6 +336,14 @@ QuatD TrigonalLowOps::getNearestQuat(const QuatD& q1, const QuatD& q2) const
 QuatF TrigonalLowOps::getNearestQuat(const QuatF& q1f, const QuatF& q2f) const
 {
   return _calcNearestQuat(TrigonalLow::QuatSym, q1f.to<double>(), q2f.to<double>()).to<float>();
+}
+
+// -----------------------------------------------------------------------------
+QuatD TrigonalLowOps::getFZQuat(const QuatD& qr) const
+{
+  LaueOps::FZType fzType = laue_ops::FZtarray[getPointGroup() - 1];
+  LaueOps::AxisOrderingType orderingType = laue_ops::FZoarray[getPointGroup() - 1];
+  return ConvertToFZ(TrigonalLow::QuatSym, qr, fzType, orderingType);
 }
 
 // -----------------------------------------------------------------------------

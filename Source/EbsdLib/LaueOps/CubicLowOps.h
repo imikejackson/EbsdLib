@@ -1,5 +1,5 @@
 /* ============================================================================
- * Copyright (c) 2009-2016 BlueQuartz Software, LLC
+ * Copyright (c) 2009-2025 BlueQuartz Software, LLC
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -122,7 +122,13 @@ public:
    * @brief Returns the Rotation Point Group for the LaueClass.
    * @return
    */
-  virtual std::string getRotationPointGroup() const override;
+  std::string getRotationPointGroup() const override;
+
+  /**
+   * @brief Returns the Rotation Point Group for the LaueClass.
+   * @return
+   */
+  int getPointGroup() const override;
 
   /**
    * @brief Returns the number of bins in each of the 3 dimensions
@@ -165,6 +171,7 @@ public:
   QuatD getNearestQuat(const QuatD& q1, const QuatD& q2) const override;
   QuatF getNearestQuat(const QuatF& q1f, const QuatF& q2f) const override;
 
+  QuatD getFZQuat(const QuatD& qr) const override;
   int getMisoBin(const OrientationType& rod) const override;
   bool inUnitTriangle(double eta, double chi) const override;
   OrientationType determineEulerAngles(double random[3], int choose) const override;
@@ -238,6 +245,20 @@ public:
    * @return
    */
   EbsdLib::UInt8ArrayType::Pointer generateIPFTriangleLegend(int imageDim, bool generateEntirePlane) const override;
+
+  /**
+   * @brief Returns if the given Quaternion is within the Rodrigues Fundamental Zone (RFZ)
+   * @param quat Input Quaternion
+   * @return
+   */
+  bool isInsideFZ(const QuatD& quat) const override;
+
+  /**
+   * @brief Returns if the given Rodrigues vector is within the Rodrigues Fundamental Zone (RFZ)
+   * @param rod Input Rodrigues Vector
+   * @return
+   */
+  bool isInsideFZ(const OrientationD& rod) const override;
 
 protected:
 public:
