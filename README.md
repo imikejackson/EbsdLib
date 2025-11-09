@@ -15,6 +15,7 @@ The [DREAM.3D](https://dream3d.bluequartz.net) project and [DREAM3D-NX](https://
 Please have a look at the unit tests for examples on using the various readers.
 
 ## Crystallographic Classes
+
 |  # | Point Group (H–M) | Rotation Point Group | Space Group No(s). | Schoenflies   | Crystal system | Laue class  | Laue Ops         |
 |---:|-------------------|----------------------|--------------------|---------------|----------------|-------------|------------------|
 |  1 | 1                 | 1                    | 1                  | C₁            | Triclinic      | (\bar{1})   | TriclinicOps     |
@@ -55,7 +56,7 @@ Please have a look at the unit tests for examples on using the various readers.
 
 | From/To            | Euler | Orientation Matrix | Axis Angle | Rodrigues | Quaternion | Homochoric | Cubochoric | Stereographic |
 |--------------------|-------|--------------------|------------|-----------|------------|------------|------------|---------------|
-| Euler              | -     | X                  | X          | X         | X          | a          | ah         | q             |
+| Euler              | --    | X                  | X          | X         | X          | a          | ah         | q             |
 | Orientation Matrix | X     | --                 | X          | e         | X          | a          | ah         | q             |
 | Axis Angle         | o     | X                  | --         | X         | X          | X          | h          | q             |
 | Rodrigues          | o     | a                  | X          | --        | a          | X          | h          | q             |

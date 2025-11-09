@@ -265,7 +265,7 @@ if(EbsdLib_INSTALL_FILES)
   include(CMakePackageConfigHelpers)
 
   write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/EbsdLib/${PROJECT_NAME}TargetsConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/EbsdLib/${PROJECT_NAME}ConfigVersion.cmake"
     VERSION ${EbsdLib_VERSION}
     COMPATIBILITY AnyNewerVersion
   )

@@ -70,7 +70,7 @@ std::vector<std::array<bool, 22>> k_FZValues = {
 };
 //clang-format on
 
-} // namespace Detail
+} // namespace detail
 
 class ConvertToFundamentalZoneTest
 {
