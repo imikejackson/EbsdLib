@@ -49,6 +49,8 @@
 #include "EbsdLib/Math/EbsdLibRandom.h"
 #include "EbsdLib/Texture/Texture.hpp"
 
+namespace ebsdlib
+{
 /**
  * @brief This class contains static functions to generate ODF and MDF data as X,Y points. This data can be discretized
  * onto a regular grid which would result in standard ODF Pole Figures and a regular 2D MDF plot.
@@ -277,13 +279,14 @@ public:
       randx3[0] = distribution(generator);
       randx3[1] = distribution(generator);
       randx3[2] = distribution(generator);
-      OrientationD eu = ops.determineEulerAngles(randx3.data(), choose);
+      EulerDType eu = ops.determineEulerAngles(randx3.data(), choose);
       eulers[3 * i + 0] = eu[0];
       eulers[3 * i + 1] = eu[1];
       eulers[3 * i + 2] = eu[2];
     }
     return err;
   }
+
 #if 0
 
   /**
@@ -482,7 +485,7 @@ public:
       randx3[0] = distribution(generator);
       randx3[1] = distribution(generator);
       randx3[2] = distribution(generator);
-      OrientationD eu = ops.determineEulerAngles(randx3.data(), choose);
+      EulerDType eu = ops.determineEulerAngles(randx3.data(), choose);
       eulers[3 * i + 0] = eu[0];
       eulers[3 * i + 1] = eu[1];
       eulers[3 * i + 2] = eu[2];
@@ -548,8 +551,7 @@ public:
       // Create a random rod vector
       randx3 = {distribution(generator), distribution(generator), distribution(generator)};
 
-      OrientationD rod = ops.determineRodriguesVector(randx3.data(), choose);
-      OrientationD ax = OrientationTransformation::ro2ax<OrientationD, OrientationD>(rod);
+      AxisAngleDType ax = ops.determineRodriguesVector(randx3.data(), choose).toAxisAngle();
 
       float w = static_cast<float>(ax[3] * radtodeg);
       size_t index = static_cast<size_t>(w * 0.2f);
@@ -714,3 +716,4 @@ public:
   StatsGen& operator=(const StatsGen&) = delete; // Copy Assignment Not Implemented
   StatsGen& operator=(StatsGen&&) = delete;      // Move Assignment Not Implemented
 };
+} // namespace ebsdlib

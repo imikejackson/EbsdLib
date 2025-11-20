@@ -48,7 +48,9 @@
 #include "EbsdLib/LaueOps/TriclinicOps.h"
 #include "EbsdLib/LaueOps/TrigonalLowOps.h"
 #include "EbsdLib/LaueOps/TrigonalOps.h"
+#include "EbsdLib/Orientation/Quaternion.hpp"
 #include "EbsdLib/Utilities/ColorTable.h"
+#include "EbsdLib/Utilities/ComputeStereographicProjection.h"
 
 #include <algorithm> // for std::max
 #include <chrono>
@@ -71,6 +73,7 @@
 |   X    |   X     | CubicLow        | 23    | 12          |
 |   X    |   X     | CubicOps        | 432   | 24          |
 */
+using namespace ebsdlib;
 
 namespace
 {
@@ -157,29 +160,31 @@ LaueOps::AxisOrderingType LaueOps::getAxisOrderingType() const
 }
 
 // -----------------------------------------------------------------------------
-EbsdLib::Rgb LaueOps::computeIPFColor(double* eulers, double* refDir, bool degToRad) const
+ebsdlib::Rgb LaueOps::computeIPFColor(double* eulers, double* refDir, bool degToRad) const
 {
 
-  const EbsdLib::Matrix3X1D refDirection(refDir);
+  const ebsdlib::Matrix3X1D refDirection(refDir);
   double chi = 0.0f;
   double eta = 0.0f;
   double _rgb[3] = {0.0, 0.0, 0.0};
 
-  OrientationType eu(eulers, 3);
+  EulerDType eu(eulers[0], eulers[1], eulers[2]);
   if(degToRad)
   {
-    eu[0] = eu[0] * EbsdLib::Constants::k_DegToRadD;
-    eu[1] = eu[1] * EbsdLib::Constants::k_DegToRadD;
-    eu[2] = eu[2] * EbsdLib::Constants::k_DegToRadD;
+    eu[0] = eu[0] * ebsdlib::constants::k_DegToRadD;
+    eu[1] = eu[1] * ebsdlib::constants::k_DegToRadD;
+    eu[2] = eu[2] * ebsdlib::constants::k_DegToRadD;
   }
-  OrientationType om(9); // Reusable for the loop
-  QuatD q1 = OrientationTransformation::eu2qu<OrientationType, QuatD>(eu);
+  OrientationMatrixDType om; // Reusable for the loop
+  QuatD q1 = eu.toQuaternion();
 
   for(int j = 0; j < getNumSymOps(); j++)
   {
-    QuatD qu = getQuatSymOp(j) * q1;
-    EbsdLib::Matrix3X3D g(OrientationTransformation::qu2om<QuatD, OrientationType>(qu).data());
-    EbsdLib::Matrix3X1D p = (g * refDirection).normalize();
+    // QuatD qu = getQuatSymOp(j) * q1;
+    QuaternionDType qu(getQuatSymOp(j) * q1);
+    om = qu.toOrientationMatrix();
+    ebsdlib::Matrix3X3D g(om.data());
+    ebsdlib::Matrix3X1D p = (g * refDirection).normalize();
 
     if(!getHasInversion() && p[2] < 0)
     {
@@ -223,13 +228,13 @@ EbsdLib::Rgb LaueOps::computeIPFColor(double* eulers, double* refDir, bool degTo
   _rgb[1] = _rgb[1] / max;
   _rgb[2] = _rgb[2] / max;
 
-  return EbsdLib::RgbColor::dRgb(static_cast<int32_t>(_rgb[0] * 255), static_cast<int32_t>(_rgb[1] * 255), static_cast<int32_t>(_rgb[2] * 255), 255);
+  return ebsdlib::RgbColor::dRgb(static_cast<int32_t>(_rgb[0] * 255), static_cast<int32_t>(_rgb[1] * 255), static_cast<int32_t>(_rgb[2] * 255), 255);
 }
 
 // -----------------------------------------------------------------------------
-void LaueOps::RodriguesComposition(OrientationD sigma, OrientationD& rod)
+void LaueOps::RodriguesComposition(RodriguesDType sigma, RodriguesDType& rod)
 {
-  OrientationD rho(3), rhomis(3);
+  std::array<double, 3> rho;
   rho[0] = -rod[0] * rod[3];
   rho[1] = -rod[1] * rod[3];
   rho[2] = -rod[2] * rod[3];
@@ -246,6 +251,7 @@ void LaueOps::RodriguesComposition(OrientationD sigma, OrientationD& rod)
   }
   else
   {
+    std::array<double, 3> rhomis;
     rhomis[0] = (rho[0] - sigma[0] + (rho[1] * sigma[2] - rho[2] * sigma[1])) / denom;
     rhomis[1] = (rho[1] - sigma[1] + (rho[2] * sigma[0] - rho[0] * sigma[2])) / denom;
     rhomis[2] = (rho[2] - sigma[2] + (rho[0] * sigma[1] - rho[1] * sigma[0])) / denom;
@@ -269,7 +275,7 @@ void LaueOps::RodriguesComposition(OrientationD sigma, OrientationD& rod)
 }
 
 // -----------------------------------------------------------------------------
-bool LaueOps::InsideCyclicFZ(const OrientationD& rod, FZType fzType, AxisOrderingType order)
+bool LaueOps::InsideCyclicFZ(const RodriguesDType& rod, FZType fzType, AxisOrderingType order)
 {
   bool res = false;
   bool doM = false;
@@ -343,7 +349,7 @@ bool LaueOps::InsideCyclicFZ(const OrientationD& rod, FZType fzType, AxisOrderin
 }
 
 // -----------------------------------------------------------------------------
-bool LaueOps::InsideDihedralFZ(const OrientationD& rod, const AxisOrderingType order)
+bool LaueOps::InsideDihedralFZ(const RodriguesDType& rod, const AxisOrderingType order)
 {
   constexpr double eps = 1.0e-10;
 
@@ -408,7 +414,7 @@ bool LaueOps::InsideDihedralFZ(const OrientationD& rod, const AxisOrderingType o
 }
 
 // -----------------------------------------------------------------------------
-bool LaueOps::InsideCubicFZ(const OrientationD& rod, const FZType fzType)
+bool LaueOps::InsideCubicFZ(const RodriguesDType& rod, const FZType fzType)
 {
   bool res = false;
   bool c1 = false;
@@ -444,7 +450,7 @@ bool LaueOps::InsideCubicFZ(const OrientationD& rod, const FZType fzType)
 }
 
 // -----------------------------------------------------------------------------
-bool LaueOps::IsInsideFZ(const OrientationD& rod, FZType fzType, AxisOrderingType order)
+bool LaueOps::IsInsideFZ(const RodriguesDType& rod, FZType fzType, AxisOrderingType order)
 {
   bool insideFZ = false;
   // dealing with 180 rotations is needed only for
@@ -484,14 +490,14 @@ bool LaueOps::IsInsideFZ(const OrientationD& rod, FZType fzType, AxisOrderingTyp
 
 bool LaueOps::IsInsideFZ(const QuatD& quat, FZType fzType, AxisOrderingType order)
 {
-  const OrientationD rod = OrientationTransformation::qu2ro<QuatD, OrientationD>(quat.getPositiveOrientation());
+  const RodriguesDType rod = QuaternionDType(quat.getPositiveOrientation()).toRodrigues();
   return IsInsideFZ(rod, fzType, order);
 }
 
 // -----------------------------------------------------------------------------
-OrientationD LaueOps::calculateMisorientationInternal(const std::vector<QuatD>& quatsym, const QuatD& q1, const QuatD& q2) const
+AxisAngleDType LaueOps::calculateMisorientationInternal(const std::vector<QuatD>& quatsym, const QuatD& q1, const QuatD& q2) const
 {
-  OrientationD axisAngleMin(0.0, 0.0, 0.0, std::numeric_limits<double>::max());
+  AxisAngleDType axisAngleMin(0.0, 0.0, 0.0, std::numeric_limits<double>::max());
   const QuatD qr = q1 * (q2.conjugate());
   size_t numsym = quatsym.size();
   // Loop through all the symmetry operators and find the Axis Angle with the smallest angular part.
@@ -508,10 +514,10 @@ OrientationD LaueOps::calculateMisorientationInternal(const std::vector<QuatD>& 
       qc.w() = 1.0;
     }
 
-    OrientationD axisAngle = OrientationTransformation::qu2ax<QuatD, OrientationType>(qc);
-    if(axisAngle[3] > EbsdLib::Constants::k_PiD)
+    AxisAngleDType axisAngle = QuaternionDType(qc).toAxisAngle();
+    if(axisAngle[3] > ebsdlib::constants::k_PiD)
     {
-      axisAngle[3] = EbsdLib::Constants::k_2PiD - axisAngle[3];
+      axisAngle[3] = ebsdlib::constants::k_2PiD - axisAngle[3];
     }
     if(axisAngle[3] < axisAngleMin[3])
     {
@@ -539,14 +545,14 @@ OrientationD LaueOps::calculateMisorientationInternal(const std::vector<QuatD>& 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-OrientationType LaueOps::_calcRodNearestOrigin(const std::vector<OrientationD>& rodsym, const OrientationType& inRod) const
+RodriguesDType LaueOps::_calcRodNearestOrigin(const std::vector<RodriguesDType>& rodsym, const RodriguesDType& inRod) const
 {
   double denom = 0.0f, dist = 0.0f;
   double smallestdist = 100000000.0f;
   double rc1 = 0.0f, rc2 = 0.0f, rc3 = 0.0f;
-  OrientationType outRod(4, 0.0f);
+  RodriguesDType outRod;
   // Turn into an actual 3 Comp Rodrigues Vector
-  OrientationType rod = inRod;
+  RodriguesDType rod = inRod;
   rod[0] *= rod[3];
   rod[1] *= rod[3];
   rod[2] *= rod[3];
@@ -616,7 +622,7 @@ QuatD LaueOps::ConvertToFZ(const std::vector<QuatD>& quatsym, const QuatD& qr, F
 {
   // Ensure the Quaternion is Normalized and the Scalar Part is positive
   QuatD normalizedQuat = qr.getPositiveOrientation();
-  OrientationD rod = OrientationTransformation::qu2ro<QuatD, OrientationD>(normalizedQuat);
+  RodriguesDType rod = QuaternionDType(normalizedQuat).toRodrigues();
 
   if(IsInsideFZ(rod, fzType, order))
   {
@@ -628,7 +634,7 @@ QuatD LaueOps::ConvertToFZ(const std::vector<QuatD>& quatsym, const QuatD& qr, F
   {
     QuatD qc = quatsym[i] * qr;
     normalizedQuat = qc.getPositiveOrientation();
-    rod = OrientationTransformation::qu2ro<QuatD, OrientationD>(normalizedQuat);
+    rod = QuaternionDType(normalizedQuat).toRodrigues();
 
     if(normalizedQuat.w() < 1.0E5 && IsInsideFZ(rod, fzType, order))
     {
@@ -640,7 +646,7 @@ QuatD LaueOps::ConvertToFZ(const std::vector<QuatD>& quatsym, const QuatD& qr, F
   return {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
 }
 
-int LaueOps::_calcMisoBin(double dim[3], double bins[3], double step[3], const OrientationType& ho) const
+int LaueOps::_calcMisoBin(double dim[3], double bins[3], double step[3], const HomochoricDType& ho) const
 {
   int miso1bin = static_cast<int>((ho[0] + dim[0]) / step[0]);
   int miso2bin = static_cast<int>((ho[1] + dim[1]) / step[1]);
@@ -682,7 +688,7 @@ void LaueOps::_calcDetermineHomochoricValues(double random[3], double init[3], d
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int LaueOps::_calcODFBin(double dim[3], double bins[3], double step[3], const OrientationType& ho) const
+int LaueOps::_calcODFBin(double dim[3], double bins[3], double step[3], const HomochoricDType& ho) const
 {
   int g1euler1bin = static_cast<int>((ho[0] + dim[0]) / step[0]);
   int g1euler2bin = static_cast<int>((ho[1] + dim[1]) / step[1]);
@@ -855,7 +861,7 @@ std::string LaueOps::ClassName()
 }
 
 //-----------------------------------------------------------------------------
-EbsdLib::Rgb LaueOps::generateMisorientationColor(const QuatD& q, const QuatD& refFrame) const
+ebsdlib::Rgb LaueOps::generateMisorientationColor(const QuatD& q, const QuatD& refFrame) const
 {
   throw std::runtime_error("LaueOps::generateMisorientationColor is not implemented.");
 }

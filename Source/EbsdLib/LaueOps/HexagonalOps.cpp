@@ -40,8 +40,9 @@
 // Include this FIRST because there is a needed define for some compiles
 // to expose some of the constants needed below
 #include "EbsdLib/Core/EbsdMacros.h"
-#include "EbsdLib/Core/Orientation.hpp"
 #include "EbsdLib/Math/EbsdLibMath.h"
+#include "EbsdLib/Orientation/OrientationFwd.hpp"
+#include "EbsdLib/Orientation/Quaternion.hpp"
 #include "EbsdLib/Utilities/CanvasUtilities.hpp"
 #include "EbsdLib/Utilities/ColorUtilities.h"
 #include "EbsdLib/Utilities/ComputeStereographicProjection.h"
@@ -54,14 +55,15 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_group.h>
 #endif
+using namespace ebsdlib;
 
 namespace HexagonalHigh
 {
 static const std::array<size_t, 3> OdfNumBins = {36, 36, 12}; // Represents a 5Deg bin
 
-static const std::array<double, 3> OdfDimInitValue = {std::pow((0.75 * (((EbsdLib::Constants::k_PiOver2D)) - std::sin(((EbsdLib::Constants::k_PiOver2D))))), (1.0 / 3.0)),
-                                                      std::pow((0.75 * (((EbsdLib::Constants::k_PiOver2D)) - std::sin(((EbsdLib::Constants::k_PiOver2D))))), (1.0 / 3.0)),
-                                                      std::pow((0.75 * ((EbsdLib::Constants::k_PiD / 6.0) - std::sin(EbsdLib::Constants::k_PiD / 6.0))), (1.0 / 3.0))};
+static const std::array<double, 3> OdfDimInitValue = {std::pow((0.75 * (((ebsdlib::constants::k_PiOver2D)) - std::sin(((ebsdlib::constants::k_PiOver2D))))), (1.0 / 3.0)),
+                                                      std::pow((0.75 * (((ebsdlib::constants::k_PiOver2D)) - std::sin(((ebsdlib::constants::k_PiOver2D))))), (1.0 / 3.0)),
+                                                      std::pow((0.75 * ((ebsdlib::constants::k_PiD / 6.0) - std::sin(ebsdlib::constants::k_PiD / 6.0))), (1.0 / 3.0))};
 static const std::array<double, 3> OdfDimStepValue = {OdfDimInitValue[0] / static_cast<double>(OdfNumBins[0] / 2), OdfDimInitValue[1] / static_cast<double>(OdfNumBins[1] / 2),
                                                       OdfDimInitValue[2] / static_cast<double>(OdfNumBins[2] / 2)};
 
@@ -92,7 +94,7 @@ static const std::vector<QuatD> QuatSym ={
     QuatD(-sq32, 0.5, 0.0, 0.0),
 };
 
-static const std::vector<OrientationD> RodSym = {
+static const std::vector<RodriguesDType> RodSym = {
     {0.0, 0.0, 1.0, 0.0},
     {0.0, 0.0, 1.0, 0.5773502691896258},
     {0.0, 0.0, 1.0, 1.7320508075688767},
@@ -256,24 +258,15 @@ bool HexagonalOps::isInsideFZ(const QuatD& quat) const
 }
 
 // -----------------------------------------------------------------------------
-bool HexagonalOps::isInsideFZ(const OrientationD& rod) const
+bool HexagonalOps::isInsideFZ(const RodriguesDType& rod) const
 {
   return IsInsideFZ(rod, getFZType(), getAxisOrderingType());
 }
 
 // -----------------------------------------------------------------------------
-OrientationD HexagonalOps::calculateMisorientation(const QuatD& q1, const QuatD& q2) const
+AxisAngleDType HexagonalOps::calculateMisorientation(const QuatD& q1, const QuatD& q2) const
 {
   return calculateMisorientationInternal(HexagonalHigh::QuatSym, q1, q2);
-}
-
-// -----------------------------------------------------------------------------
-OrientationF HexagonalOps::calculateMisorientation(const QuatF& q1f, const QuatF& q2f) const
-{
-  QuatD q1 = q1f.to<double>();
-  QuatD q2 = q2f.to<double>();
-  OrientationD axisAngle = calculateMisorientationInternal(HexagonalHigh::QuatSym, q1, q2);
-  return axisAngle;
 }
 
 QuatD HexagonalOps::getQuatSymOp(int32_t i) const
@@ -292,13 +285,13 @@ void HexagonalOps::getRodSymOp(int i, double* r) const
   r[2] = HexagonalHigh::RodSym[i][2];
 }
 
-EbsdLib::Matrix3X3D HexagonalOps::getMatSymOpD(int i) const
+ebsdlib::Matrix3X3D HexagonalOps::getMatSymOpD(int i) const
 {
   return {HexagonalHigh::MatSym[i][0][0], HexagonalHigh::MatSym[i][0][1], HexagonalHigh::MatSym[i][0][2], HexagonalHigh::MatSym[i][1][0], HexagonalHigh::MatSym[i][1][1],
           HexagonalHigh::MatSym[i][1][2], HexagonalHigh::MatSym[i][2][0], HexagonalHigh::MatSym[i][2][1], HexagonalHigh::MatSym[i][2][2]};
 }
 
-EbsdLib::Matrix3X3F HexagonalOps::getMatSymOpF(int i) const
+ebsdlib::Matrix3X3F HexagonalOps::getMatSymOpF(int i) const
 {
   return {static_cast<float>(HexagonalHigh::MatSym[i][0][0]), static_cast<float>(HexagonalHigh::MatSym[i][0][1]), static_cast<float>(HexagonalHigh::MatSym[i][0][2]),
           static_cast<float>(HexagonalHigh::MatSym[i][1][0]), static_cast<float>(HexagonalHigh::MatSym[i][1][1]), static_cast<float>(HexagonalHigh::MatSym[i][1][2]),
@@ -333,7 +326,7 @@ void HexagonalOps::getMatSymOp(int i, float g[3][3]) const
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-OrientationType HexagonalOps::getODFFZRod(const OrientationType& rod) const
+RodriguesDType HexagonalOps::getODFFZRod(const RodriguesDType& rod) const
 {
   return _calcRodNearestOrigin(HexagonalHigh::RodSym, rod);
 }
@@ -341,15 +334,15 @@ OrientationType HexagonalOps::getODFFZRod(const OrientationType& rod) const
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-OrientationType HexagonalOps::getMDFFZRod(const OrientationType& inRod) const
+RodriguesDType HexagonalOps::getMDFFZRod(const RodriguesDType& inRod) const
 {
   double w, n1, n2, n3;
   double FZn1 = 0.0, FZn2 = 0.0, FZn3 = 0.0, FZw = 0.0;
   double n1n2mag;
 
-  OrientationType rod = _calcRodNearestOrigin(HexagonalHigh::RodSym, inRod);
+  RodriguesDType rod = _calcRodNearestOrigin(HexagonalHigh::RodSym, inRod);
 
-  OrientationType ax = OrientationTransformation::ro2ax<OrientationType, OrientationType>(rod);
+  AxisAngleDType ax = rod.toAxisAngle();
 
   n1 = ax[0];
   n2 = ax[1], n3 = ax[2], w = ax[3];
@@ -363,7 +356,7 @@ OrientationType HexagonalOps::getMDFFZRod(const OrientationType& inRod) const
     n1 = -n1, n2 = -n2, n3 = -n3;
   }
 
-  float angle = static_cast<float>(180.0 * std::atan2(n2, n1) * EbsdLib::Constants::k_1OverPiD);
+  float angle = static_cast<float>(180.0 * std::atan2(n2, n1) * ebsdlib::constants::k_1OverPiD);
   if(angle < 0)
   {
     angle = angle + 360.0f;
@@ -377,7 +370,7 @@ OrientationType HexagonalOps::getMDFFZRod(const OrientationType& inRod) const
     if(int(angle / 30) % 2 == 0)
     {
       FZw = angle - (30.0f * int(angle / 30.0f));
-      FZw = FZw * EbsdLib::Constants::k_PiOver180D;
+      FZw = FZw * ebsdlib::constants::k_PiOver180D;
       FZn1 = n1n2mag * std::cos(FZw);
       FZn2 = n1n2mag * std::sin(FZw);
     }
@@ -385,13 +378,13 @@ OrientationType HexagonalOps::getMDFFZRod(const OrientationType& inRod) const
     {
       FZw = angle - (30.0f * int(angle / 30.0f));
       FZw = 30.0f - FZw;
-      FZw = FZw * EbsdLib::Constants::k_PiOver180D;
+      FZw = FZw * ebsdlib::constants::k_PiOver180D;
       FZn1 = n1n2mag * std::cos(FZw);
       FZn2 = n1n2mag * std::sin(FZw);
     }
   }
 
-  return OrientationTransformation::ax2ro<OrientationType, OrientationType>(OrientationType(FZn1, FZn2, FZn3, w));
+  return AxisAngleDType(FZn1, FZn2, FZn3, w).toRodrigues();
 }
 
 QuatD HexagonalOps::getNearestQuat(const QuatD& q1, const QuatD& q2) const
@@ -417,13 +410,13 @@ QuatD HexagonalOps::getFZQuat(const QuatD& qr) const
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int HexagonalOps::getMisoBin(const OrientationType& rod) const
+int HexagonalOps::getMisoBin(const RodriguesDType& rod) const
 {
   double dim[3];
   double bins[3];
   double step[3];
 
-  OrientationType ho = OrientationTransformation::ro2ho<OrientationType, OrientationType>(rod);
+  HomochoricDType ho = rod.toHomochoric();
 
   dim[0] = HexagonalHigh::OdfDimInitValue[0];
   dim[1] = HexagonalHigh::OdfDimInitValue[1];
@@ -441,7 +434,7 @@ int HexagonalOps::getMisoBin(const OrientationType& rod) const
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-OrientationType HexagonalOps::determineEulerAngles(double random[3], int choose) const
+EulerDType HexagonalOps::determineEulerAngles(double random[3], int choose) const
 {
   double init[3];
   double step[3];
@@ -460,28 +453,27 @@ OrientationType HexagonalOps::determineEulerAngles(double random[3], int choose)
 
   _calcDetermineHomochoricValues(random, init, step, phi, h1, h2, h3);
 
-  OrientationType ho(h1, h2, h3);
-  OrientationType ro = OrientationTransformation::ho2ro<OrientationType, OrientationType>(ho);
+  RodriguesDType ro = HomochoricDType(h1, h2, h3).toRodrigues();
   ro = getODFFZRod(ro);
-  OrientationType eu = OrientationTransformation::ro2eu<OrientationType, OrientationType>(ro);
+  EulerDType eu = ro.toEuler();
   return eu;
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-OrientationType HexagonalOps::randomizeEulerAngles(const OrientationType& synea) const
+EulerDType HexagonalOps::randomizeEulerAngles(const EulerDType& synea) const
 {
   size_t symOp = getRandomSymmetryOperatorIndex(HexagonalHigh::k_SymOpsCount);
-  QuatD quat = OrientationTransformation::eu2qu<OrientationType, QuatD>(synea);
+  QuatD quat = synea.toQuaternion();
   QuatD qc = HexagonalHigh::QuatSym[symOp] * quat;
-  return OrientationTransformation::qu2eu<QuatD, OrientationType>(qc);
+  return QuaternionDType(qc).toEuler();
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-OrientationType HexagonalOps::determineRodriguesVector(double random[3], int choose) const
+RodriguesDType HexagonalOps::determineRodriguesVector(double random[3], int choose) const
 {
   double init[3];
   double step[3];
@@ -499,8 +491,7 @@ OrientationType HexagonalOps::determineRodriguesVector(double random[3], int cho
   phi[2] = static_cast<int32_t>(choose / (HexagonalHigh::OdfNumBins[0] * HexagonalHigh::OdfNumBins[1]));
 
   _calcDetermineHomochoricValues(random, init, step, phi, h1, h2, h3);
-  OrientationType ho(h1, h2, h3);
-  OrientationType ro = OrientationTransformation::ho2ro<OrientationType, OrientationType>(ho);
+  RodriguesDType ro = HomochoricDType(h1, h2, h3).toRodrigues();
   ro = getMDFFZRod(ro);
   return ro;
 }
@@ -508,13 +499,13 @@ OrientationType HexagonalOps::determineRodriguesVector(double random[3], int cho
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int HexagonalOps::getOdfBin(const OrientationType& rod) const
+int HexagonalOps::getOdfBin(const RodriguesDType& rod) const
 {
   double dim[3];
   double bins[3];
   double step[3];
 
-  OrientationType ho = OrientationTransformation::ro2ho<OrientationType, OrientationType>(rod);
+  HomochoricDType ho = rod.toHomochoric();
 
   dim[0] = HexagonalHigh::OdfDimInitValue[0];
   dim[1] = HexagonalHigh::OdfDimInitValue[1];
@@ -945,7 +936,7 @@ double HexagonalOps::getF1(const QuatD& q1, const QuatD& q2, double LD[3], bool 
 
   QuattoMat(q1, g1);
   QuattoMat(q2, g2);
-  EbsdMatrixMath::Normalize3x1(LD);
+  ebsdlib::EbsdMatrixMath::Normalize3x1(LD);
   // Note the order of multiplication is such that I am actually multiplying by the inverse of g1 and g2
   if(maxSF == true)
   {
@@ -959,12 +950,12 @@ double HexagonalOps::getF1(const QuatD& q1, const QuatD& q2, double LD[3], bool 
     slipPlane[0] = CubicSlipPlanes[i][0];
     slipPlane[1] = CubicSlipPlanes[i][1];
     slipPlane[2] = CubicSlipPlanes[i][2];
-    EbsdMatrixMath::Multiply3x3with3x1(g1,slipDirection,hkl1);
-    EbsdMatrixMath::Multiply3x3with3x1(g1,slipPlane,uvw1);
-    EbsdMatrixMath::Normalize3x1(hkl1);
-    EbsdMatrixMath::Normalize3x1(uvw1);
-    directionComponent1 = EbsdMatrixMath::DotProduct(LD,uvw1);
-    planeComponent1 = EbsdMatrixMath::DotProduct(LD,hkl1);
+    ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g1,slipDirection,hkl1);
+    ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g1,slipPlane,uvw1);
+    ebsdlib::EbsdMatrixMath::Normalize3x1(hkl1);
+    ebsdlib::EbsdMatrixMath::Normalize3x1(uvw1);
+    directionComponent1 = ebsdlib::EbsdMatrixMath::DotProduct(LD,uvw1);
+    planeComponent1 = ebsdlib::EbsdMatrixMath::DotProduct(LD,hkl1);
     schmidFactor1 = directionComponent1*planeComponent1;
     if(schmidFactor1 > maxSchmidFactor || maxSF == false)
     {
@@ -978,12 +969,12 @@ double HexagonalOps::getF1(const QuatD& q1, const QuatD& q2, double LD[3], bool 
         slipPlane[0] = CubicSlipPlanes[i][0];
         slipPlane[1] = CubicSlipPlanes[i][1];
         slipPlane[2] = CubicSlipPlanes[i][2];
-        EbsdMatrixMath::Multiply3x3with3x1(g2,slipDirection,hkl2);
-        EbsdMatrixMath::Multiply3x3with3x1(g2,slipPlane,uvw2);
-        EbsdMatrixMath::Normalize3x1(hkl2);
-        EbsdMatrixMath::Normalize3x1(uvw2);
-        directionComponent2 = EbsdMatrixMath::DotProduct(LD,uvw2);
-        planeComponent2 = EbsdMatrixMath::DotProduct(LD,hkl2);
+        ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g2,slipDirection,hkl2);
+        ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g2,slipPlane,uvw2);
+        ebsdlib::EbsdMatrixMath::Normalize3x1(hkl2);
+        ebsdlib::EbsdMatrixMath::Normalize3x1(uvw2);
+        directionComponent2 = ebsdlib::EbsdMatrixMath::DotProduct(LD,uvw2);
+        planeComponent2 = ebsdlib::EbsdMatrixMath::DotProduct(LD,hkl2);
         schmidFactor2 = directionComponent2*planeComponent2;
         totalDirectionMisalignment = totalDirectionMisalignment + directionMisalignment;
       }
@@ -1017,7 +1008,7 @@ double HexagonalOps::getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bo
 
   QuattoMat(q1, g1);
   QuattoMat(q2, g2);
-  EbsdMatrixMath::Normalize3x1(LD);
+  ebsdlib::EbsdMatrixMath::Normalize3x1(LD);
   // Note the order of multiplication is such that I am actually multiplying by the inverse of g1 and g2
   if(maxSF == true)
   {
@@ -1031,12 +1022,12 @@ double HexagonalOps::getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bo
     slipPlane[0] = CubicSlipPlanes[i][0];
     slipPlane[1] = CubicSlipPlanes[i][1];
     slipPlane[2] = CubicSlipPlanes[i][2];
-    EbsdMatrixMath::Multiply3x3with3x1(g1,slipDirection,hkl1);
-    EbsdMatrixMath::Multiply3x3with3x1(g1,slipPlane,uvw1);
-    EbsdMatrixMath::Normalize3x1(hkl1);
-    EbsdMatrixMath::Normalize3x1(uvw1);
-    directionComponent1 = EbsdMatrixMath::DotProduct(LD,uvw1);
-    planeComponent1 = EbsdMatrixMath::DotProduct(LD,hkl1);
+    ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g1,slipDirection,hkl1);
+    ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g1,slipPlane,uvw1);
+    ebsdlib::EbsdMatrixMath::Normalize3x1(hkl1);
+    ebsdlib::EbsdMatrixMath::Normalize3x1(uvw1);
+    directionComponent1 = ebsdlib::EbsdMatrixMath::DotProduct(LD,uvw1);
+    planeComponent1 = ebsdlib::EbsdMatrixMath::DotProduct(LD,hkl1);
     schmidFactor1 = directionComponent1*planeComponent1;
     if(schmidFactor1 > maxSchmidFactor || maxSF == false)
     {
@@ -1051,15 +1042,15 @@ double HexagonalOps::getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bo
         slipPlane[0] = CubicSlipPlanes[j][0];
         slipPlane[1] = CubicSlipPlanes[j][1];
         slipPlane[2] = CubicSlipPlanes[j][2];
-        EbsdMatrixMath::Multiply3x3with3x1(g2,slipDirection,hkl2);
-        EbsdMatrixMath::Multiply3x3with3x1(g2,slipPlane,uvw2);
-        EbsdMatrixMath::Normalize3x1(hkl2);
-        EbsdMatrixMath::Normalize3x1(uvw2);
-        directionComponent2 = EbsdMatrixMath::DotProduct(LD,uvw2);
-        planeComponent2 = EbsdMatrixMath::DotProduct(LD,hkl2);
+        ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g2,slipDirection,hkl2);
+        ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g2,slipPlane,uvw2);
+        ebsdlib::EbsdMatrixMath::Normalize3x1(hkl2);
+        ebsdlib::EbsdMatrixMath::Normalize3x1(uvw2);
+        directionComponent2 = ebsdlib::EbsdMatrixMath::DotProduct(LD,uvw2);
+        planeComponent2 = ebsdlib::EbsdMatrixMath::DotProduct(LD,hkl2);
         schmidFactor2 = directionComponent2*planeComponent2;
-        directionMisalignment = fabs(EbsdMatrixMath::DotProduct(uvw1,uvw2));
-        planeMisalignment = fabs(EbsdMatrixMath::DotProduct(hkl1,hkl2));
+        directionMisalignment = fabs(ebsdlib::EbsdMatrixMath::DotProduct(uvw1,uvw2));
+        planeMisalignment = fabs(ebsdlib::EbsdMatrixMath::DotProduct(hkl1,hkl2));
         totalDirectionMisalignment = totalDirectionMisalignment + directionMisalignment;
         totalPlaneMisalignment = totalPlaneMisalignment + planeMisalignment;
       }
@@ -1092,7 +1083,7 @@ double HexagonalOps::getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool 
 
   QuattoMat(q1, g1);
   QuattoMat(q2, g2);
-  EbsdMatrixMath::Normalize3x1(LD);
+  ebsdlib::EbsdMatrixMath::Normalize3x1(LD);
   // Note the order of multiplication is such that I am actually multiplying by the inverse of g1 and g2
 
   /*  for(int i=0;i<12;i++)
@@ -1103,12 +1094,12 @@ double HexagonalOps::getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool 
     slipPlane[0] = CubicSlipPlanes[i][0];
     slipPlane[1] = CubicSlipPlanes[i][1];
     slipPlane[2] = CubicSlipPlanes[i][2];
-    EbsdMatrixMath::Multiply3x3with3x1(g1,slipDirection,hkl1);
-    EbsdMatrixMath::Multiply3x3with3x1(g1,slipPlane,uvw1);
-    EbsdMatrixMath::Normalize3x1(hkl1);
-    EbsdMatrixMath::Normalize3x1(uvw1);
-    directionComponent1 = EbsdMatrixMath::DotProduct(LD,uvw1);
-    planeComponent1 = EbsdMatrixMath::DotProduct(LD,hkl1);
+    ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g1,slipDirection,hkl1);
+    ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g1,slipPlane,uvw1);
+    ebsdlib::EbsdMatrixMath::Normalize3x1(hkl1);
+    ebsdlib::EbsdMatrixMath::Normalize3x1(uvw1);
+    directionComponent1 = ebsdlib::EbsdMatrixMath::DotProduct(LD,uvw1);
+    planeComponent1 = ebsdlib::EbsdMatrixMath::DotProduct(LD,hkl1);
     schmidFactor1 = directionComponent1*planeComponent1;
     if(schmidFactor1 > maxSchmidFactor || maxSF == false)
     {
@@ -1122,12 +1113,12 @@ double HexagonalOps::getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool 
         slipPlane[0] = CubicSlipPlanes[j][0];
         slipPlane[1] = CubicSlipPlanes[j][1];
         slipPlane[2] = CubicSlipPlanes[j][2];
-        EbsdMatrixMath::Multiply3x3with3x1(g2,slipDirection,hkl2);
-        EbsdMatrixMath::Multiply3x3with3x1(g2,slipPlane,uvw2);
-        EbsdMatrixMath::Normalize3x1(hkl2);
-        EbsdMatrixMath::Normalize3x1(uvw2);
-        directionComponent2 = EbsdMatrixMath::DotProduct(LD,uvw2);
-        planeComponent2 = EbsdMatrixMath::DotProduct(LD,hkl2);
+        ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g2,slipDirection,hkl2);
+        ebsdlib::EbsdMatrixMath::Multiply3x3with3x1(g2,slipPlane,uvw2);
+        ebsdlib::EbsdMatrixMath::Normalize3x1(hkl2);
+        ebsdlib::EbsdMatrixMath::Normalize3x1(uvw2);
+        directionComponent2 = ebsdlib::EbsdMatrixMath::DotProduct(LD,uvw2);
+        planeComponent2 = ebsdlib::EbsdMatrixMath::DotProduct(LD,hkl2);
         schmidFactor2 = directionComponent2*planeComponent2;
         totalDirectionMisalignment = totalDirectionMisalignment + directionMisalignment;
       }
@@ -1149,13 +1140,13 @@ namespace HexagonalHigh
 {
 class GenerateSphereCoordsImpl
 {
-  EbsdLib::FloatArrayType* m_Eulers;
-  EbsdLib::FloatArrayType* m_xyz001;
-  EbsdLib::FloatArrayType* m_xyz011;
-  EbsdLib::FloatArrayType* m_xyz111;
+  ebsdlib::FloatArrayType* m_Eulers;
+  ebsdlib::FloatArrayType* m_xyz001;
+  ebsdlib::FloatArrayType* m_xyz011;
+  ebsdlib::FloatArrayType* m_xyz111;
 
 public:
-  GenerateSphereCoordsImpl(EbsdLib::FloatArrayType* eulerAngles, EbsdLib::FloatArrayType* xyz0001Coords, EbsdLib::FloatArrayType* xyz1010Coords, EbsdLib::FloatArrayType* xyz1120Coords)
+  GenerateSphereCoordsImpl(ebsdlib::FloatArrayType* eulerAngles, ebsdlib::FloatArrayType* xyz0001Coords, ebsdlib::FloatArrayType* xyz1010Coords, ebsdlib::FloatArrayType* xyz1120Coords)
   : m_Eulers(eulerAngles)
   , m_xyz001(xyz0001Coords)
   , m_xyz011(xyz1010Coords)
@@ -1166,14 +1157,13 @@ public:
 
   void generate(size_t start, size_t end) const
   {
-    EbsdLib::Matrix3X3D gTranspose;
-    EbsdLib::Matrix3X1D direction(0.0, 0.0, 0.0);
+    ebsdlib::Matrix3X3D gTranspose;
+    ebsdlib::Matrix3X1D direction(0.0, 0.0, 0.0);
 
     // Generate all the Coordinates
     for(size_t i = start; i < end; ++i)
     {
-      OrientationType eu(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2));
-      EbsdLib::Matrix3X3D g(OrientationTransformation::eu2om<OrientationType, OrientationType>(eu).data());
+      ebsdlib::Matrix3X3D g(EulerDType(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2)).toOrientationMatrix().data());
 
       gTranspose = g.transpose();
 
@@ -1189,7 +1179,7 @@ public:
 
       // -----------------------------------------------------------------------------
       // [10-10], also [210]
-      direction[0] = EbsdLib::Constants::k_Root3Over2D;
+      direction[0] = ebsdlib::constants::k_Root3Over2D;
       direction[1] = 0.5;
       direction[2] = 0.0;
       (gTranspose * direction).copyInto<float>(m_xyz011->getPointer(i * 18));
@@ -1203,7 +1193,7 @@ public:
       std::transform(m_xyz011->getPointer(i * 18 + 6), m_xyz011->getPointer(i * 18 + 9),
                      m_xyz011->getPointer(i * 18 + 9),           // write to the next triplet in memory
                      [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
-      direction[0] = -EbsdLib::Constants::k_Root3Over2D;
+      direction[0] = -ebsdlib::constants::k_Root3Over2D;
       direction[1] = 0.5;
       direction[2] = 0.0;
       (gTranspose * direction).copyInto<float>(m_xyz011->getPointer(i * 18 + 12));
@@ -1221,14 +1211,14 @@ public:
                      m_xyz111->getPointer(i * 18 + 3),           // write to the next triplet in memory
                      [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
       direction[0] = 0.5;
-      direction[1] = EbsdLib::Constants::k_Root3Over2D;
+      direction[1] = ebsdlib::constants::k_Root3Over2D;
       direction[2] = 0.0;
       (gTranspose * direction).copyInto<float>(m_xyz111->getPointer(i * 18 + 6));
       std::transform(m_xyz111->getPointer(i * 18 + 6), m_xyz111->getPointer(i * 18 + 9),
                      m_xyz111->getPointer(i * 18 + 9),           // write to the next triplet in memory
                      [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
       direction[0] = -0.5;
-      direction[1] = EbsdLib::Constants::k_Root3Over2D;
+      direction[1] = ebsdlib::constants::k_Root3Over2D;
       direction[2] = 0.0;
       (gTranspose * direction).copyInto<float>(m_xyz111->getPointer(i * 18 + 12));
       std::transform(m_xyz111->getPointer(i * 18 + 12), m_xyz111->getPointer(i * 18 + 15),
@@ -1249,7 +1239,7 @@ public:
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void HexagonalOps::generateSphereCoordsFromEulers(EbsdLib::FloatArrayType* eulers, EbsdLib::FloatArrayType* xyz0001, EbsdLib::FloatArrayType* xyz1010, EbsdLib::FloatArrayType* xyz1120) const
+void HexagonalOps::generateSphereCoordsFromEulers(ebsdlib::FloatArrayType* eulers, ebsdlib::FloatArrayType* xyz0001, ebsdlib::FloatArrayType* xyz1010, ebsdlib::FloatArrayType* xyz1120) const
 {
   size_t nOrientations = eulers->getNumberOfTuples();
 
@@ -1284,7 +1274,7 @@ void HexagonalOps::generateSphereCoordsFromEulers(EbsdLib::FloatArrayType* euler
 // -----------------------------------------------------------------------------
 std::array<double, 3> HexagonalOps::getIpfColorAngleLimits(double eta) const
 {
-  return {HexagonalHigh::k_EtaMin * EbsdLib::Constants::k_DegToRadD, HexagonalHigh::k_EtaMax * EbsdLib::Constants::k_DegToRadD, HexagonalHigh::k_ChiMax * EbsdLib::Constants::k_DegToRadD};
+  return {HexagonalHigh::k_EtaMin * ebsdlib::constants::k_DegToRadD, HexagonalHigh::k_EtaMax * ebsdlib::constants::k_DegToRadD, HexagonalHigh::k_ChiMax * ebsdlib::constants::k_DegToRadD};
 }
 
 // -----------------------------------------------------------------------------
@@ -1292,14 +1282,14 @@ std::array<double, 3> HexagonalOps::getIpfColorAngleLimits(double eta) const
 // -----------------------------------------------------------------------------
 bool HexagonalOps::inUnitTriangle(double eta, double chi) const
 {
-  return !(eta < (HexagonalHigh::k_EtaMin * EbsdLib::Constants::k_PiOver180D) || eta > (HexagonalHigh::k_EtaMax * EbsdLib::Constants::k_PiOver180D) || chi < 0 ||
-           chi > (HexagonalHigh::k_ChiMax * EbsdLib::Constants::k_PiOver180D));
+  return !(eta < (HexagonalHigh::k_EtaMin * ebsdlib::constants::k_PiOver180D) || eta > (HexagonalHigh::k_EtaMax * ebsdlib::constants::k_PiOver180D) || chi < 0 ||
+           chi > (HexagonalHigh::k_ChiMax * ebsdlib::constants::k_PiOver180D));
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-EbsdLib::Rgb HexagonalOps::generateIPFColor(double* eulers, double* refDir, bool degToRad) const
+ebsdlib::Rgb HexagonalOps::generateIPFColor(double* eulers, double* refDir, bool degToRad) const
 {
   return computeIPFColor(eulers, refDir, degToRad);
 }
@@ -1307,7 +1297,7 @@ EbsdLib::Rgb HexagonalOps::generateIPFColor(double* eulers, double* refDir, bool
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-EbsdLib::Rgb HexagonalOps::generateIPFColor(double phi1, double phi, double phi2, double refDir0, double refDir1, double refDir2, bool degToRad) const
+ebsdlib::Rgb HexagonalOps::generateIPFColor(double phi1, double phi, double phi2, double refDir0, double refDir1, double refDir2, bool degToRad) const
 {
   double eulers[3] = {phi1, phi, phi2};
   double refDir[3] = {refDir0, refDir1, refDir2};
@@ -1317,7 +1307,7 @@ EbsdLib::Rgb HexagonalOps::generateIPFColor(double phi1, double phi, double phi2
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-EbsdLib::Rgb HexagonalOps::generateRodriguesColor(double r1, double r2, double r3) const
+ebsdlib::Rgb HexagonalOps::generateRodriguesColor(double r1, double r2, double r3) const
 {
   double range1 = 2.0f * HexagonalHigh::OdfDimInitValue[0];
   double range2 = 2.0f * HexagonalHigh::OdfDimInitValue[1];
@@ -1334,7 +1324,7 @@ EbsdLib::Rgb HexagonalOps::generateRodriguesColor(double r1, double r2, double r
   green = green / max1;
   blue = blue / max2;
 
-  return EbsdLib::RgbColor::dRgb(static_cast<int32_t>(red * 255), static_cast<int32_t>(green * 255), static_cast<int32_t>(blue * 255), 255);
+  return ebsdlib::RgbColor::dRgb(static_cast<int32_t>(red * 255), static_cast<int32_t>(green * 255), static_cast<int32_t>(blue * 255), 255);
 }
 
 // -----------------------------------------------------------------------------
@@ -1348,7 +1338,7 @@ std::array<std::string, 3> HexagonalOps::getDefaultPoleFigureNames() const
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(PoleFigureConfiguration_t& config) const
+std::vector<ebsdlib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(PoleFigureConfiguration_t& config) const
 {
   std::array<std::string, 3> labels = getDefaultPoleFigureNames();
   std::string label0 = labels[0];
@@ -1373,11 +1363,11 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(P
   // Create an Array to hold the XYZ Coordinates which are the coords on the sphere.
   // this is size for CUBIC ONLY, <001> Family
   std::vector<size_t> dims(1, 3);
-  EbsdLib::FloatArrayType::Pointer xyz001 = EbsdLib::FloatArrayType::CreateArray(numOrientations * HexagonalHigh::symSize0, dims, label0 + std::string("xyzCoords"), true);
+  ebsdlib::FloatArrayType::Pointer xyz001 = ebsdlib::FloatArrayType::CreateArray(numOrientations * HexagonalHigh::symSize0, dims, label0 + std::string("xyzCoords"), true);
   // this is size for CUBIC ONLY, <011> Family
-  EbsdLib::FloatArrayType::Pointer xyz011 = EbsdLib::FloatArrayType::CreateArray(numOrientations * HexagonalHigh::symSize1, dims, label1 + std::string("xyzCoords"), true);
+  ebsdlib::FloatArrayType::Pointer xyz011 = ebsdlib::FloatArrayType::CreateArray(numOrientations * HexagonalHigh::symSize1, dims, label1 + std::string("xyzCoords"), true);
   // this is size for CUBIC ONLY, <111> Family
-  EbsdLib::FloatArrayType::Pointer xyz111 = EbsdLib::FloatArrayType::CreateArray(numOrientations * HexagonalHigh::symSize2, dims, label2 + std::string("xyzCoords"), true);
+  ebsdlib::FloatArrayType::Pointer xyz111 = ebsdlib::FloatArrayType::CreateArray(numOrientations * HexagonalHigh::symSize2, dims, label2 + std::string("xyzCoords"), true);
 
   config.sphereRadius = 1.0f;
 
@@ -1386,9 +1376,9 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(P
 
   // These arrays hold the "intensity" images which eventually get converted to an actual Color RGB image
   // Generate the modified Lambert projection images (Squares, 2 of them, 1 for northern hemisphere, 1 for southern hemisphere
-  EbsdLib::DoubleArrayType::Pointer intensity001 = EbsdLib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label0 + "_Intensity_Image", true);
-  EbsdLib::DoubleArrayType::Pointer intensity011 = EbsdLib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label1 + "_Intensity_Image", true);
-  EbsdLib::DoubleArrayType::Pointer intensity111 = EbsdLib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label2 + "_Intensity_Image", true);
+  ebsdlib::DoubleArrayType::Pointer intensity001 = ebsdlib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label0 + "_Intensity_Image", true);
+  ebsdlib::DoubleArrayType::Pointer intensity011 = ebsdlib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label1 + "_Intensity_Image", true);
+  ebsdlib::DoubleArrayType::Pointer intensity111 = ebsdlib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label2 + "_Intensity_Image", true);
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
   bool doParallel = true;
 
@@ -1461,11 +1451,11 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(P
   config.maxScale = max;
 
   dims[0] = 4;
-  EbsdLib::UInt8ArrayType::Pointer image001 = EbsdLib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label0, true);
-  EbsdLib::UInt8ArrayType::Pointer image011 = EbsdLib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label1, true);
-  EbsdLib::UInt8ArrayType::Pointer image111 = EbsdLib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label2, true);
+  ebsdlib::UInt8ArrayType::Pointer image001 = ebsdlib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label0, true);
+  ebsdlib::UInt8ArrayType::Pointer image011 = ebsdlib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label1, true);
+  ebsdlib::UInt8ArrayType::Pointer image111 = ebsdlib::UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label2, true);
 
-  std::vector<EbsdLib::UInt8ArrayType::Pointer> poleFigures(3);
+  std::vector<ebsdlib::UInt8ArrayType::Pointer> poleFigures(3);
   if(config.order.size() == 3)
   {
     poleFigures[config.order[0]] = image001;
@@ -1505,19 +1495,19 @@ std::vector<EbsdLib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(P
 
 namespace
 {
-EbsdLib::UInt8ArrayType::Pointer CreateIPFLegend(const HexagonalOps* ops, int imageDim, bool generateEntirePlane)
+ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const HexagonalOps* ops, int imageDim, bool generateEntirePlane)
 {
   std::vector<size_t> dims(1, 4);
   std::string arrayName = EbsdStringUtils::replace(ops->getSymmetryName(), "/", "_");
-  EbsdLib::UInt8ArrayType::Pointer image = EbsdLib::UInt8ArrayType::CreateArray(imageDim * imageDim, dims, arrayName + " Triangle Legend", true);
+  ebsdlib::UInt8ArrayType::Pointer image = ebsdlib::UInt8ArrayType::CreateArray(imageDim * imageDim, dims, arrayName + " Triangle Legend", true);
   uint32_t* pixelPtr = reinterpret_cast<uint32_t*>(image->getPointer(0));
 
   double xInc = 1.0f / static_cast<double>(imageDim);
   double yInc = 1.0f / static_cast<double>(imageDim);
-  static EbsdLib::Matrix3X1D k_Orientation(0.0, 0.0, 0.0);
+  static ebsdlib::Matrix3X1D k_Orientation(0.0, 0.0, 0.0);
 
   // Find the slope of the bounding line.
-  static const double m = -1.0F * std::sin(30.0 * EbsdLib::Constants::k_PiOver180D) / std::cos(30.0 * EbsdLib::Constants::k_PiOver180D);
+  static const double m = -1.0F * std::sin(30.0 * ebsdlib::constants::k_PiOver180D) / std::cos(30.0 * ebsdlib::constants::k_PiOver180D);
 
   size_t yScanLineIndex = 0; // We use this to control where the data
   // is drawn. Otherwise, the image will come out flipped vertically
@@ -1534,7 +1524,7 @@ EbsdLib::UInt8ArrayType::Pointer CreateIPFLegend(const HexagonalOps* ops, int im
       double y = -1.0f + 2.0f * yIndex * yInc;
 
       double sumSquares = (x * x) + (y * y);
-      EbsdLib::Rgb color = 0xFFFFFFFF; // Default to white
+      ebsdlib::Rgb color = 0xFFFFFFFF; // Default to white
 
       if(sumSquares > 1.0f) // Outside unit circle
       {
@@ -1555,7 +1545,7 @@ EbsdLib::UInt8ArrayType::Pointer CreateIPFLegend(const HexagonalOps* ops, int im
       }
       else
       {
-        auto sphericalCoords = Stereographic::Utils::StereoToSpherical(x, y).normalize();
+        auto sphericalCoords = stereographic::utils::StereoToSpherical(x, y).normalize();
         color = ops->generateIPFColor(k_Orientation.data(), sphericalCoords.data(), false);
       }
 
@@ -1627,7 +1617,7 @@ void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float
       float penWidth = 1.0f;
       context.set_color(canvas_ity::stroke_style, 0.25f, 0.25f, 0.25f, 1.0f);
       context.set_line_width(penWidth);
-      EbsdLib::DrawLine(context, figureCenter[0], figureCenter[1], x, y);
+      ebsdlib::DrawLine(context, figureCenter[0], figureCenter[1], x, y);
     }
     std::string label = labels2[idx];
     std::string fontWidthString = EbsdStringUtils::replace(label, "-", "");
@@ -1639,7 +1629,7 @@ void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float
     context.set_color(canvas_ity::stroke_style, 0.0f, 0.0f, 0.0f, 1.0f);
     if(drawAngle[idx] || drawFullCircle)
     {
-      EbsdLib::WriteText(context, label, {x, y}, fontPtSize);
+      ebsdlib::WriteText(context, label, {x, y}, fontPtSize);
     }
   }
 
@@ -1649,13 +1639,13 @@ void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float
     float fontWidth = context.measure_text(label.c_str());
     float x = figureCenter[0] - fontWidth;
     float y = figureCenter[1] - fontPtSize * 0.25F;
-    EbsdLib::WriteText(context, label, {x, y}, fontPtSize);
+    ebsdlib::WriteText(context, label, {x, y}, fontPtSize);
   }
 }
 
 } // namespace
 // -----------------------------------------------------------------------------
-EbsdLib::UInt8ArrayType::Pointer HexagonalOps::generateIPFTriangleLegend(int canvasDim, bool generateEntirePlane) const
+ebsdlib::UInt8ArrayType::Pointer HexagonalOps::generateIPFTriangleLegend(int canvasDim, bool generateEntirePlane) const
 {
   // Figure out the Legend Pixel Size
   const float fontPtSize = static_cast<float>(canvasDim) / 24.0f;
@@ -1688,13 +1678,13 @@ EbsdLib::UInt8ArrayType::Pointer HexagonalOps::generateIPFTriangleLegend(int can
   }
   std::array<float, 2> figureCenter = {figureOrigin[0] + halfWidth, figureOrigin[1] + halfHeight};
 
-  EbsdLib::UInt8ArrayType::Pointer image = CreateIPFLegend(this, legendHeight, generateEntirePlane);
+  ebsdlib::UInt8ArrayType::Pointer image = CreateIPFLegend(this, legendHeight, generateEntirePlane);
 
   // Create a Canvas to draw into
   canvas_ity::canvas context(pageWidth, pageHeight);
 
-  std::vector<unsigned char> latoBold = EbsdLib::fonts::GetLatoBold();
-  std::vector<unsigned char> latoRegular = EbsdLib::fonts::GetLatoRegular();
+  std::vector<unsigned char> latoBold = ebsdlib::fonts::GetLatoBold();
+  std::vector<unsigned char> latoRegular = ebsdlib::fonts::GetLatoRegular();
   context.set_font(latoBold.data(), static_cast<int>(latoBold.size()), fontPtSize);
   context.set_color(canvas_ity::fill_style, 0.0f, 0.0f, 0.0f, 1.0f);
   canvas_ity::baseline_style const baselines[] = {canvas_ity::alphabetic, canvas_ity::top, canvas_ity::middle, canvas_ity::bottom, canvas_ity::hanging, canvas_ity::ideographic};
@@ -1711,27 +1701,27 @@ EbsdLib::UInt8ArrayType::Pointer HexagonalOps::generateIPFTriangleLegend(int can
   context.fill();
 
   // Convert from ARGB to RGBA which is what canvas_itk wants
-  image = EbsdLib::ConvertColorOrder(image.get(), legendHeight);
+  image = ebsdlib::ConvertColorOrder(image.get(), legendHeight);
 
   // We need to mirror across the X Axis because the image was drawn with +Y pointing down
-  image = EbsdLib::MirrorImage(image.get(), legendHeight);
+  image = ebsdlib::MirrorImage(image.get(), legendHeight);
 
   context.draw_image(image->getPointer(0), legendWidth, legendHeight, legendWidth * image->getNumberOfComponents(), figureOrigin[0], figureOrigin[1], static_cast<float>(legendWidth),
                      static_cast<float>(legendHeight));
 
   // Draw Title of Legend
   context.set_font(latoBold.data(), static_cast<int>(latoBold.size()), fontPtSize * 1.5);
-  EbsdLib::WriteText(context, getSymmetryName(), {margins[0], static_cast<float>(fontPtSize * 1.5)}, fontPtSize * 1.5);
+  ebsdlib::WriteText(context, getSymmetryName(), {margins[0], static_cast<float>(fontPtSize * 1.5)}, fontPtSize * 1.5);
 
   context.set_font(latoRegular.data(), static_cast<int>(latoRegular.size()), fontPtSize);
   DrawFullCircleAnnotations(context, canvasDim, fontPtSize, margins, figureOrigin, figureCenter, generateEntirePlane);
 
   // Fetch the rendered RGBA pixels from the entire canvas.
-  EbsdLib::UInt8ArrayType::Pointer rgbaCanvasImage = EbsdLib::UInt8ArrayType::CreateArray(pageHeight * pageWidth, {4ULL}, "Triangle Legend", true);
+  ebsdlib::UInt8ArrayType::Pointer rgbaCanvasImage = ebsdlib::UInt8ArrayType::CreateArray(pageHeight * pageWidth, {4ULL}, "Triangle Legend", true);
   // std::vector<unsigned char> rgbaCanvasImage(static_cast<size_t>(pageHeight * pageWidth * 4));
   context.get_image_data(rgbaCanvasImage->getPointer(0), pageWidth, pageHeight, pageWidth * 4, 0, 0);
 
-  rgbaCanvasImage = EbsdLib::RemoveAlphaChannel(rgbaCanvasImage.get());
+  rgbaCanvasImage = ebsdlib::RemoveAlphaChannel(rgbaCanvasImage.get());
   return rgbaCanvasImage;
 }
 

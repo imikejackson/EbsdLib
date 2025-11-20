@@ -3,7 +3,7 @@
 #include <cmath>
 #include <memory>
 
-namespace EbsdLib
+namespace ebsdlib
 {
 /**
  * @brief 3x1 Matrix as a row.
@@ -46,6 +46,12 @@ public:
   Matrix3X1& operator=(Matrix3X1&&) noexcept = default; // Move Assignment Default Implemented
 
   ~Matrix3X1() = default;
+
+  template <typename K>
+  Matrix3X1<K> to() const
+  {
+    return Matrix3X1<K>(m_Data[0], m_Data[1], m_Data[2]);
+  }
 
   /**
    * @brief Returns a reference to the value at index
@@ -326,4 +332,13 @@ private:
 
 using Matrix3X1F = Matrix3X1<float>;
 using Matrix3X1D = Matrix3X1<double>;
-} // namespace EbsdLib
+
+template <typename T>
+inline std::ostream& operator<<(std::ostream& os, const Matrix3X1<T>& obj)
+{
+  os << "<" << obj[0] << ", " << obj[1] << ", " << obj[2] << ">";
+
+  return os;
+}
+
+} // namespace ebsdlib

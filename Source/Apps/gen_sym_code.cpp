@@ -1,11 +1,11 @@
 
 #include "EbsdLib/Core/EbsdLibConstants.h"
 
-#include "EbsdLib/Core/OrientationTransformation.hpp"
 #include "EbsdLib/LaueOps/LaueOps.h"
 #include "EbsdLib/Math/EbsdLibMath.h"
 #include "EbsdLib/Math/Matrix3X1.hpp"
 #include "EbsdLib/Math/Matrix3X3.hpp"
+#include "EbsdLib/Orientation/Quaternion.hpp"
 
 #include <cmath>
 #include <fstream>
@@ -15,6 +15,8 @@
 #include <map>
 #include <string>
 #include <vector>
+
+using namespace ebsdlib;
 
 const double sq22 = 0.7071067811865475244; // sqrt(2)/2
 static double sq32 = std::sqrt(3.0) / 2.0;
@@ -151,7 +153,7 @@ std::vector<QuatD> InitRotationPointGroup(int rotPointGroup)
   return sym_ops;
 }
 
-void Print3x3(const OrientationD& m)
+void Print3x3(const OrientationMatrixDType& m)
 {
   std::cout << std::fixed;
   std::cout << std::setprecision(16);
@@ -175,7 +177,7 @@ void PrintQuat(const QuatD& q, bool sv)
   }
 }
 
-void PrintRod(const OrientationD& q)
+void PrintRod(const RodriguesDType& q)
 {
   std::cout << std::fixed;
   std::cout << std::setprecision(16);
@@ -214,10 +216,10 @@ int main(int argc, char* argv[])
     }
     std::cout << "};\n\n";
 
-    std::cout << "static const std::vector<OrientationD> RodSym = {\n";
+    std::cout << "static const std::vector<RodriguesDType> RodSym = {\n";
     for(const auto& symOp : symOPs)
     {
-      auto ro = OrientationTransformation::qu2ro<QuatD, OrientationD>(symOp);
+      auto ro = QuaternionDType(symOp).toRodrigues();
       PrintRod(ro);
       std::cout << ",\n";
     }
@@ -226,7 +228,7 @@ int main(int argc, char* argv[])
     std::cout << "static const double MatSym[k_SymOpsCount][3][3] = {\n";
     for(const auto& symOp : symOPs)
     {
-      auto om = OrientationTransformation::qu2om<QuatD, OrientationD>(symOp);
+      auto om = QuaternionDType(symOp).toOrientationMatrix();
       Print3x3(om);
       std::cout << "    \n";
     }
@@ -235,6 +237,4 @@ int main(int argc, char* argv[])
   }
 
   return -1;
-
-  return 0;
 }

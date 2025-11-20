@@ -7,10 +7,9 @@
 // #include <fmt/core.h>
 // #include <fmt/xchar.h>
 
-namespace EbsdLib
+namespace ebsdlib
 {
-namespace detail
-{
+
 /**
  * @brief Returns true if the given character array is null-terminated.
  * @tparam T
@@ -22,7 +21,6 @@ constexpr bool HasNullTerminator(const T (&string)[Size]) noexcept
 {
   return string[Size - 1] == static_cast<T>('\0');
 }
-} // namespace detail
 
 /**
  * @brief BasicEbsdStringLiteral is meant to be a safe container for a string literal allowing for easy access to its size/length.
@@ -52,7 +50,7 @@ public:
   : m_String(string)
   , m_Size(Size)
   {
-    if(!detail::HasNullTerminator(string))
+    if(!HasNullTerminator(string))
     {
       throw std::runtime_error("BasicEbsdStringLiteral must be null-terminated");
     }
@@ -215,7 +213,7 @@ using EbsdStringLiteral = BasicEbsdStringLiteral<char>;
 using WEbsdStringLiteral = BasicEbsdStringLiteral<wchar_t>;
 using String16Literal = BasicEbsdStringLiteral<char16_t>;
 using String32Literal = BasicEbsdStringLiteral<char32_t>;
-} // namespace EbsdLib
+} // namespace ebsdlib
 
 #if 0
 template <class CharT>

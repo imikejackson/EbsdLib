@@ -41,6 +41,9 @@
 #include "EbsdLib/Math/EbsdLibMath.h"
 #include "EbsdLib/Math/Matrix3X3.hpp"
 
+namespace ebsdlib::deprecated
+{
+
 /**
  * @brief The Orientation class encapsulates one of many types of rotation representations
  * Bunge Euler Angles (3x1), Orientation Matrix (3x3), Rodrigues-Frank Vector (1x4),
@@ -188,7 +191,7 @@ public:
    * @brief Orientation Copy constructor
    * @param gMatrix
    */
-  explicit Orientation(const EbsdLib::Matrix3X3<T>& gMatrix)
+  explicit Orientation(const ebsdlib::Matrix3X3<T>& gMatrix)
   : m_Size(9)
   {
     allocate();
@@ -576,28 +579,7 @@ public:
     return std::equal(begin(range1), end(range1), begin(range2));
   }
 
-  /**
-   * @brief toGMatrix Copies the internal values into the 3x3 "G" Matrix
-   * @param g
-   */
-  void toGMatrix(T g[3][3]) const
-  {
-    if(m_Size != 9)
-    {
-      throw std::out_of_range("Orientation subscript out of range");
-    }
-    g[0][0] = m_Array[0];
-    g[0][1] = m_Array[1];
-    g[0][2] = m_Array[2];
-    g[1][0] = m_Array[3];
-    g[1][1] = m_Array[4];
-    g[1][2] = m_Array[5];
-    g[2][0] = m_Array[6];
-    g[2][1] = m_Array[7];
-    g[2][2] = m_Array[8];
-  }
-
-  EbsdLib::Matrix3X3<T> toGMatrixObj() const
+  ebsdlib::Matrix3X3<T> toGMatrix() const
   {
     if(m_Size != 9)
     {
@@ -800,3 +782,4 @@ private:
 using OrientationType = Orientation<double>;
 using OrientationD = Orientation<double>;
 using OrientationF = Orientation<float>;
+} // namespace ebsdlib::deprecated
