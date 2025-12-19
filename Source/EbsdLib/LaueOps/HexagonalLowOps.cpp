@@ -77,7 +77,7 @@ static const int k_NumMdfBins = 36;
 static double sq32 = std::sqrt(3.0) / 2.0;
 
 // Rotation Point Group: 6
-// clang-format off
+/* clang-format off */
 static const std::vector<QuatD> QuatSym ={
     QuatD(0.0, 0.0, 0.0, 1.0),
     QuatD(0.0, 0.0, 0.5, sq32),
@@ -122,7 +122,7 @@ static const double MatSym[k_SymOpsCount][3][3] = {
     {0.0, 0.0, 1.0}},
     
 };
-// clang-format on
+/* clang-format on */
 
 static const double k_EtaMin = 0.0;
 static const double k_EtaMax = 60.0;

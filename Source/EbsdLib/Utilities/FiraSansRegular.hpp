@@ -2,7 +2,7 @@
 #include <vector>
 namespace ebsdlib::fonts
 {
-// clang-format off
+/* clang-format off */
   char const k_FiraSansRegularBase64 [] = 
     "AAEAAAASAQAABAAgRFNJRwAAAAEABhRYAAAACEdERUY34j72AAABLAAAAYhHUE9Tjhb8JgAA"
     "ArQAAR1oR1NVQuzHJdsAASAcAABKnk9TLzJgqNdDAAFqvAAAAGBjbWFw1jTBywABaxwAAFFU"
@@ -7383,5 +7383,5 @@ namespace ebsdlib::fonts
     "AgUIKrEAC0K+FgARAAyACQAGAAAFAAkqsQAQQr4AQABAAEAAQABAAAUACSqxAwBEsSQBiFFY"
     "sECIWLEDZESxJgGIUVi6CIAAAQRAiGNUWLEDAERZWVlZQAxZCEUIMwclBRkEBQwquAH/hbAE"
     "jbECAESxBWREAAAAAAAAAQAAAAA=";
-// clang-format on
+/* clang-format on */
 } // namespace ebsdlib::fonts

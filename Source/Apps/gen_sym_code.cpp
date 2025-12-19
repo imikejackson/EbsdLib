@@ -207,7 +207,7 @@ int main(int argc, char* argv[])
     }
 
     std::cout << std::setprecision(8);
-    std::cout << "// clang-format off\n";
+    std::cout << "/* clang-format off */\n";
     std::cout << "static const std::vector<QuatD> QuatSym ={\n";
     for(const auto& symOp : symOPs)
     {
@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
       std::cout << "    \n";
     }
     std::cout << "};\n";
-    std::cout << "// clang-format on\n\n";
+    std::cout << "/* clang-format on */\n\n";
   }
 
   return -1;

@@ -48,7 +48,7 @@
 
 using namespace ebsdlib;
 
-//clang-format off
+/* clang-format off */
 namespace detail
 {
 std::vector<std::array<double, 3>> k_TestRodrigues = {{0.55, 0.55, 0.20},   {0.55, 0.55, 0.35},   {0.55, 0.55, 0.5},    {0.55, 0.55, 0.75},   {0.0, 0.0, 0.75},     {0.0, 0.0, 1.25},
@@ -69,7 +69,7 @@ std::vector<std::array<bool, 22>> k_FZValues = {
     {true, true, true, false, false, false, true, true, true, false, true, true, true, true, false, false, true, true, true, true, true, true},              // 3,
     {true, true, true, false, false, false, true, true, true, false, true, false, false, false, false, false, true, true, true, false, false, true}          // ,32,
 };
-//clang-format on
+/* clang-format on */
 
 } // namespace detail
 

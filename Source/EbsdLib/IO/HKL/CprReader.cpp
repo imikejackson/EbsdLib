@@ -46,7 +46,7 @@ enum ColumnNames  {
 //                                                                    ebsdlib::NumericTypes::Type::UInt8, ebsdlib::NumericTypes::Type::UInt8, ebsdlib::NumericTypes::Type::UInt8};
 //
 
-// clang-format off
+/* clang-format off */
 std::array<CrcFieldDefinition, 13> k_FieldDefinitions{CrcFieldDefinition{1, "Phase", ebsdlib::NumericTypes::Type::UInt8},
                                                       CrcFieldDefinition{4, "X", ebsdlib::NumericTypes::Type::Float},
                                                       CrcFieldDefinition{4, "Y", ebsdlib::NumericTypes::Type::Float},
@@ -60,7 +60,7 @@ std::array<CrcFieldDefinition, 13> k_FieldDefinitions{CrcFieldDefinition{1, "Pha
                                                       CrcFieldDefinition{1, "Bands", ebsdlib::NumericTypes::Type::UInt8},
                                                       CrcFieldDefinition{1, "Error", ebsdlib::NumericTypes::Type::UInt8},
                                                       CrcFieldDefinition{4, "ReliabilityIndex", ebsdlib::NumericTypes::Type::Int32}};
-// clang-format on
+/* clang-format on */
 
 // Read a complete Scan Point
 // loop over parserDefinitions->parse(buffer, currentIndex);

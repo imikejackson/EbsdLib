@@ -86,7 +86,7 @@ static const double SlipPlanes[12][3] = {{1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},  {1.
                                          {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0}, {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}};
 
 // Rotation Point Group: 432
-// clang-format off
+/* clang-format off */
 static const std::vector<QuatD> QuatSym ={
     QuatD(0.0, 0.0, 0.0, 1.0),
     QuatD(1.0, 0.0, 0.0, 0.0),
@@ -239,7 +239,7 @@ static const double MatSym[k_SymOpsCount][3][3] = {
     {-1.0, 0.0, 0.0}},
     
 };
-// clang-format on
+/* clang-format on */
 static const double k_EtaMin = 0.0;
 static const double k_EtaMax = 45.0;
 
