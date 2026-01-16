@@ -87,10 +87,10 @@ public:
    * @brief getODFSize Returns the number of ODF bins
    * @return
    */
-  int getODFSize() const override;
+  size_t getODFSize() const override;
 
   /**
-   * @brief getNumSymmetry Returns the internal variables for symSize0, symSize1, symSize2
+   * @brief getNumSymmetry Returns the internal variables for k_SymSize0, k_SymSize1, k_SymSize2
    * @return
    */
   std::array<int32_t, 3> getNumSymmetry() const override;
@@ -99,7 +99,7 @@ public:
    * @brief getMDFSize Returns the number of MDF bins
    * @return
    */
-  int getMDFSize() const override;
+  size_t getMDFSize() const override;
 
   /**
    * @brief Returns the number of bins for an MDF Plot assuming 5 degree increments
@@ -111,7 +111,7 @@ public:
    * @brief getNumSymOps Returns the number of symmetry operators
    * @return
    */
-  int getNumSymOps() const override;
+  size_t getNumSymOps() const override;
 
   /**
    * @brief getSymmetryName Returns the name of the Laue class
@@ -152,19 +152,33 @@ public:
    * @return Axis Angle Representation
    */
   // ebsdlib::AxisAngleDType calculateMisorientation(const QuatF& q1, const QuatF& q2) const override;
+  /**
+   * @brief getQuatSymOp Returns the symmetry operator at index i
+   * @param i The index into the Symmetry operators array
+   * @return The quaternion symmetry operator
+   */
+  QuatD getQuatSymOp(size_t i) const override;
 
-  QuatD getQuatSymOp(int i) const override;
-  void getRodSymOp(int i, double* r) const override;
+  /**
+   * @brief getRodSymOp Returns a Rodrigues vector based on the symmetry operator at index i
+   * @param i Index of the symmetry operator
+   * @param r Pointer to store the Rodrigues vector into.
+   */
+  RodriguesDType getRodSymOp(size_t i) const override;
+
+  /**
+   * @brief getNumRodriguesSymOps Returns the number of Rodrigues symmetry operators
+   * @return
+   */
+  size_t getNumRodriguesSymOps() const override;
 
   /**
    * @brief Retrieves a specific Symmetry Operator for a giving index
    * @param i The index from the Symmetry Operator Array to retrieve
    * @return void or a Matrix3X3 object.
    */
-  void getMatSymOp(int i, double g[3][3]) const override;
-  void getMatSymOp(int i, float g[3][3]) const override;
-  ebsdlib::Matrix3X3F getMatSymOpF(int i) const override;
-  ebsdlib::Matrix3X3D getMatSymOpD(int i) const override;
+  Matrix3X3F getMatSymOpF(size_t i) const override;
+  Matrix3X3D getMatSymOpD(size_t i) const override;
 
   RodriguesDType getODFFZRod(const RodriguesDType& rod) const override;
   RodriguesDType getMDFFZRod(const RodriguesDType& rod) const override;

@@ -286,12 +286,12 @@ ebsdlib::UInt8ArrayType::Pointer DrawStandardHexagonalProjection(ebsdlib::UInt8A
       0.25F, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 0.25F, 0.5F, 1.0F, -1.0F, 1.0F, 1.0F,
   };
   std::vector<bool> drawAngle = {true, false, false, false, false, false, false, false, true, true, true, true};
-  float radius = 1.0; // Work with a Unit Circle.
+
   for(size_t idx = 0; idx < angles.size(); idx++)
   {
-    radius = 1.0F;
+    float radius = 1.0f;
     float angle = angles[idx];
-    float rads = angle * M_PI / 180.0f;
+    float rads = angle * ebsdlib::constants::k_DegToRadF;
     float x = radius * (cos(rads));
     float y = radius * (sin(rads));
 

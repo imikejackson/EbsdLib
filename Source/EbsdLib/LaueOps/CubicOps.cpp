@@ -39,8 +39,6 @@
 // to expose some of the constants needed below
 #include "EbsdLib/Core/EbsdMacros.h"
 #include "EbsdLib/Math/EbsdLibMath.h"
-#include "EbsdLib/Math/EbsdMatrixMath.h"
-#include "EbsdLib/Math/GeometryMath.h"
 #include "EbsdLib/Orientation/Euler.hpp"
 #include "EbsdLib/Orientation/OrientationFwd.hpp"
 #include "EbsdLib/Orientation/OrientationMatrix.hpp"
@@ -62,22 +60,22 @@ using namespace ebsdlib;
 namespace CubicHigh
 {
 
-static const std::array<size_t, 3> OdfNumBins = {18, 18, 18}; // Represents a 5Deg bin
-static const std::array<double, 3> OdfDimInitValue = {std::pow((0.75 * (ebsdlib::constants::k_PiOver4D - std::sin(ebsdlib::constants::k_PiOver4D))), (1.0 / 3.0)),
-                                                      std::pow((0.75 * (ebsdlib::constants::k_PiOver4D - std::sin(ebsdlib::constants::k_PiOver4D))), (1.0 / 3.0)),
-                                                      std::pow((0.75 * (ebsdlib::constants::k_PiOver4D - std::sin(ebsdlib::constants::k_PiOver4D))), (1.0 / 3.0))};
+constexpr std::array<size_t, 3> k_OdfNumBins = {18, 18, 18}; // Represents a 5Deg bin
+static const std::array<double, 3> k_OdfDimInitValue = {std::pow((0.75 * (ebsdlib::constants::k_PiOver4D - std::sin(ebsdlib::constants::k_PiOver4D))), (1.0 / 3.0)),
+                                                        std::pow((0.75 * (ebsdlib::constants::k_PiOver4D - std::sin(ebsdlib::constants::k_PiOver4D))), (1.0 / 3.0)),
+                                                        std::pow((0.75 * (ebsdlib::constants::k_PiOver4D - std::sin(ebsdlib::constants::k_PiOver4D))), (1.0 / 3.0))};
 
-static const std::array<double, 3> OdfDimStepValue = {OdfDimInitValue[0] / static_cast<double>(OdfNumBins[0] / 2), OdfDimInitValue[1] / static_cast<double>(OdfNumBins[1] / 2),
-                                                      OdfDimInitValue[2] / static_cast<double>(OdfNumBins[2] / 2)};
+static const std::array<double, 3> k_OdfDimStepValue = {k_OdfDimInitValue[0] / static_cast<double>(k_OdfNumBins[0] / 2), k_OdfDimInitValue[1] / static_cast<double>(k_OdfNumBins[1] / 2),
+                                                        k_OdfDimInitValue[2] / static_cast<double>(k_OdfNumBins[2] / 2)};
 
-static const int symSize0 = 6;
-static const int symSize1 = 12;
-static const int symSize2 = 8;
+constexpr int k_SymSize0 = 6;
+constexpr int k_SymSize1 = 12;
+constexpr int k_SymSize2 = 8;
 
-static const int k_OdfSize = 5832;
-static const int k_MdfSize = 5832;
-static const int k_SymOpsCount = 24;
-static const int k_NumMdfBins = 13;
+constexpr size_t k_OdfSize = 5832;
+constexpr size_t k_MdfSize = 5832;
+constexpr size_t k_SymOpsCount = 24;
+constexpr int k_NumMdfBins = 13;
 
 static const double SlipDirections[12][3] = {{0.0, 1.0, -1.0}, {1.0, 0.0, -1.0}, {1.0, -1.0, 0.0}, {1.0, -1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 1.0, 1.0},
                                              {1.0, 1.0, 0.0},  {0.0, 1.0, 1.0},  {1.0, 0.0, -1.0}, {1.0, 1.0, 0.0},  {1.0, 0.0, 1.0}, {0.0, 1.0, -1.0}};
@@ -85,25 +83,29 @@ static const double SlipDirections[12][3] = {{0.0, 1.0, -1.0}, {1.0, 0.0, -1.0},
 static const double SlipPlanes[12][3] = {{1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},  {1.0, 1.0, 1.0},  {1.0, 1.0, -1.0}, {1.0, 1.0, -1.0}, {1.0, 1.0, -1.0},
                                          {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0}, {1.0, -1.0, 1.0}, {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}, {-1.0, 1.0, 1.0}};
 
+static const double sqrtHalf = std::sqrt(0.5);
+static const double sqrtOneThird = std::sqrt(0.3333333333333333333);
+static const double sqrtThree = std::sqrt(3.0);
+
 // Rotation Point Group: 432
 /* clang-format off */
-static const std::vector<QuatD> QuatSym ={
+static const std::vector<QuatD> k_QuatSym ={
     QuatD(0.0, 0.0, 0.0, 1.0),
     QuatD(1.0, 0.0, 0.0, 0.0),
     QuatD(0.0, 1.0, 0.0, 0.0),
     QuatD(0.0, 0.0, 1.0, 0.0),
-    QuatD(0.7071067811865476, 0.0, 0.0, 0.7071067811865476),
-    QuatD(0.0, 0.7071067811865476, 0.0, 0.7071067811865476),
-    QuatD(0.0, 0.0, 0.7071067811865476, 0.7071067811865476),
-    QuatD(-0.7071067811865476, 0.0, 0.0, 0.7071067811865476),
-    QuatD(0.0, -0.7071067811865476, 0.0, 0.7071067811865476),
-    QuatD(0.0, 0.0, -0.7071067811865476, 0.7071067811865476),
-    QuatD(0.7071067811865476, 0.7071067811865476, 0.0, 0.0),
-    QuatD(-0.7071067811865476, 0.7071067811865476, 0.0, 0.0),
-    QuatD(0.0, 0.7071067811865476, 0.7071067811865476, 0.0),
-    QuatD(0.0, -0.7071067811865476, 0.7071067811865476, 0.0),
-    QuatD(0.7071067811865476, 0.0, 0.7071067811865476, 0.0),
-    QuatD(-0.7071067811865476, 0.0, 0.7071067811865476, 0.0),
+    QuatD(sqrtHalf, 0.0, 0.0, sqrtHalf),
+    QuatD(0.0, sqrtHalf, 0.0, sqrtHalf),
+    QuatD(0.0, 0.0, sqrtHalf, sqrtHalf),
+    QuatD(-sqrtHalf, 0.0, 0.0, sqrtHalf),
+    QuatD(0.0, -sqrtHalf, 0.0, sqrtHalf),
+    QuatD(0.0, 0.0, -sqrtHalf, sqrtHalf),
+    QuatD(sqrtHalf, sqrtHalf, 0.0, 0.0),
+    QuatD(-sqrtHalf, sqrtHalf, 0.0, 0.0),
+    QuatD(0.0, sqrtHalf, sqrtHalf, 0.0),
+    QuatD(0.0, -sqrtHalf, sqrtHalf, 0.0),
+    QuatD(sqrtHalf, 0.0, sqrtHalf, 0.0),
+    QuatD(-sqrtHalf, 0.0, sqrtHalf, 0.0),
     QuatD(0.5, 0.5, 0.5, 0.5),
     QuatD(-0.5, -0.5, -0.5, 0.5),
     QuatD(0.5, -0.5, 0.5, 0.5),
@@ -114,7 +116,7 @@ static const std::vector<QuatD> QuatSym ={
     QuatD(0.5, 0.5, -0.5, 0.5),
 };
 
-static const std::vector<RodriguesDType> RodSym = {
+static const std::vector<RodriguesDType> k_RodSym = {
     {0.0, 0.0, 1.0, 0.0},
     {1.0, 0.0, 0.0, 10000000000000.0},
     {0.0, 1.0, 0.0, 10000000000000.0},
@@ -125,138 +127,133 @@ static const std::vector<RodriguesDType> RodSym = {
     {-1.0, 0.0, 0.0, 1.0},
     {0.0, -1.0, 0.0, 1.0},
     {0.0, 0.0, -1.0, 1.0},
-    {0.7071067811865476, 0.7071067811865476, 0.0, 10000000000000.0},
-    {-0.7071067811865476, 0.7071067811865476, 0.0, 10000000000000.0},
-    {0.0, 0.7071067811865476, 0.7071067811865476, 10000000000000.0},
-    {0.0, -0.7071067811865476, 0.7071067811865476, 10000000000000.0},
-    {0.7071067811865476, 0.0, 0.7071067811865476, 10000000000000.0},
-    {-0.7071067811865476, 0.0, 0.7071067811865476, 10000000000000.0},
-    {0.5773502691896258, 0.5773502691896258, 0.5773502691896258, 1.7320508075688767},
-    {-0.5773502691896258, -0.5773502691896258, -0.5773502691896258, 1.7320508075688767},
-    {0.5773502691896258, -0.5773502691896258, 0.5773502691896258, 1.7320508075688767},
-    {-0.5773502691896258, 0.5773502691896258, -0.5773502691896258, 1.7320508075688767},
-    {-0.5773502691896258, 0.5773502691896258, 0.5773502691896258, 1.7320508075688767},
-    {0.5773502691896258, -0.5773502691896258, -0.5773502691896258, 1.7320508075688767},
-    {-0.5773502691896258, -0.5773502691896258, 0.5773502691896258, 1.7320508075688767},
-    {0.5773502691896258, 0.5773502691896258, -0.5773502691896258, 1.7320508075688767},
+    {sqrtHalf, sqrtHalf, 0.0, 10000000000000.0},
+    {-sqrtHalf, sqrtHalf, 0.0, 10000000000000.0},
+    {0.0, sqrtHalf, sqrtHalf, 10000000000000.0},
+    {0.0, -sqrtHalf, sqrtHalf, 10000000000000.0},
+    {sqrtHalf, 0.0, sqrtHalf, 10000000000000.0},
+    {-sqrtHalf, 0.0, sqrtHalf, 10000000000000.0},
+    {sqrtOneThird, sqrtOneThird, sqrtOneThird, sqrtThree},
+    {-sqrtOneThird, -sqrtOneThird, -sqrtOneThird, sqrtThree},
+    {sqrtOneThird, -sqrtOneThird, sqrtOneThird, sqrtThree},
+    {-sqrtOneThird, sqrtOneThird, -sqrtOneThird, sqrtThree},
+    {-sqrtOneThird, sqrtOneThird, sqrtOneThird, sqrtThree},
+    {sqrtOneThird, -sqrtOneThird, -sqrtOneThird, sqrtThree},
+    {-sqrtOneThird, -sqrtOneThird, sqrtOneThird, sqrtThree},
+    {sqrtOneThird, sqrtOneThird, -sqrtOneThird, sqrtThree},
 };
 
-static const double MatSym[k_SymOpsCount][3][3] = {
-    {{1.0, 0.0, 0.0},
-    {0.0, 1.0, 0.0},
-    {0.0, 0.0, 1.0}},
-    
-    {{1.0, 0.0, 0.0},
-    {0.0, -1.0, 0.0},
-    {0.0, 0.0, -1.0}},
-    
-    {{-1.0, 0.0, 0.0},
-    {0.0, 1.0, 0.0},
-    {0.0, 0.0, -1.0}},
-    
-    {{-1.0, 0.0, 0.0},
-    {0.0, -1.0, 0.0},
-    {0.0, 0.0, 1.0}},
-    
-    {{1.0, 0.0, 0.0},
-    {0.0, 0.0, -1.0},
-    {0.0, 1.0, 0.0}},
-    
-    {{0.0, 0.0, 1.0},
-    {0.0, 1.0, 0.0},
-    {-1.0, 0.0, 0.0}},
-    
-    {{0.0, -1.0, 0.0},
-    {1.0, 0.0, 0.0},
-    {0.0, 0.0, 1.0}},
-    
-    {{1.0, -0.0, 0.0},
-    {0.0, 0.0, 1.0},
-    {-0.0, -1.0, 0.0}},
-    
-    {{0.0, -0.0, -1.0},
-    {0.0, 1.0, -0.0},
-    {1.0, 0.0, 0.0}},
-    
-    {{0.0, 1.0, 0.0},
-    {-1.0, 0.0, -0.0},
-    {-0.0, 0.0, 1.0}},
-    
-    {{0.0, 1.0, 0.0},
-    {1.0, 0.0, 0.0},
-    {0.0, 0.0, -1.0}},
-    
-    {{0.0, -1.0, 0.0},
-    {-1.0, 0.0, 0.0},
-    {-0.0, 0.0, -1.0}},
-    
-    {{-1.0, 0.0, 0.0},
-    {0.0, 0.0, 1.0},
-    {0.0, 1.0, 0.0}},
-    
-    {{-1.0, -0.0, 0.0},
-    {0.0, 0.0, -1.0},
-    {0.0, -1.0, 0.0}},
-    
-    {{0.0, 0.0, 1.0},
-    {0.0, -1.0, 0.0},
-    {1.0, 0.0, 0.0}},
-    
-    {{0.0, -0.0, -1.0},
-    {0.0, -1.0, 0.0},
-    {-1.0, 0.0, 0.0}},
-    
-    {{0.0, 0.0, 1.0},
-    {1.0, 0.0, 0.0},
-    {0.0, 1.0, 0.0}},
-    
-    {{0.0, 1.0, 0.0},
-    {0.0, 0.0, 1.0},
-    {1.0, 0.0, 0.0}},
-    
-    {{0.0, -1.0, 0.0},
-    {0.0, 0.0, -1.0},
-    {1.0, 0.0, 0.0}},
-    
-    {{0.0, 0.0, 1.0},
-    {-1.0, 0.0, 0.0},
-    {0.0, -1.0, 0.0}},
-    
-    {{0.0, -1.0, 0.0},
-    {0.0, 0.0, 1.0},
-    {-1.0, 0.0, 0.0}},
-    
-    {{0.0, 0.0, -1.0},
-    {-1.0, 0.0, 0.0},
-    {0.0, 1.0, 0.0}},
-    
-    {{0.0, 0.0, -1.0},
-    {1.0, 0.0, 0.0},
-    {0.0, -1.0, 0.0}},
-    
-    {{0.0, 1.0, 0.0},
-    {0.0, 0.0, -1.0},
-    {-1.0, 0.0, 0.0}},
+static const std::vector<Matrix3X3D> k_MatSym = {
+    {1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0},
+
+    {1.0, 0.0, 0.0,
+    0.0, -1.0, 0.0,
+    0.0, 0.0, -1.0},
+
+    {-1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0,
+    0.0, 0.0, -1.0},
+
+    {-1.0, 0.0, 0.0,
+    0.0, -1.0, 0.0,
+    0.0, 0.0, 1.0},
+
+    {1.0, 0.0, 0.0,
+    0.0, 0.0, -1.0,
+    0.0, 1.0, 0.0},
+
+    {0.0, 0.0, 1.0,
+    0.0, 1.0, 0.0,
+    -1.0, 0.0, 0.0},
+
+    {0.0, -1.0, 0.0,
+    1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0},
+
+    {1.0, -0.0, 0.0,
+    0.0, 0.0, 1.0,
+    -0.0, -1.0, 0.0},
+
+    {0.0, -0.0, -1.0,
+    0.0, 1.0, -0.0,
+    1.0, 0.0, 0.0},
+
+    {0.0, 1.0, 0.0,
+    -1.0, 0.0, -0.0,
+    -0.0, 0.0, 1.0},
+
+    {0.0, 1.0, 0.0,
+    1.0, 0.0, 0.0,
+    0.0, 0.0, -1.0},
+
+    {0.0, -1.0, 0.0,
+    -1.0, 0.0, 0.0,
+    -0.0, 0.0, -1.0},
+
+    {-1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0,
+    0.0, 1.0, 0.0},
+
+    {-1.0, -0.0, 0.0,
+    0.0, 0.0, -1.0,
+    0.0, -1.0, 0.0},
+
+    {0.0, 0.0, 1.0,
+    0.0, -1.0, 0.0,
+    1.0, 0.0, 0.0},
+
+    {0.0, -0.0, -1.0,
+    0.0, -1.0, 0.0,
+    -1.0, 0.0, 0.0},
+
+    {0.0, 0.0, 1.0,
+    1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0},
+
+    {0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0, 0.0, 0.0},
+
+    {0.0, -1.0, 0.0,
+    0.0, 0.0, -1.0,
+    1.0, 0.0, 0.0},
+
+    {0.0, 0.0, 1.0,
+    -1.0, 0.0, 0.0,
+    0.0, -1.0, 0.0},
+
+    {0.0, -1.0, 0.0,
+    0.0, 0.0, 1.0,
+    -1.0, 0.0, 0.0},
+
+    {0.0, 0.0, -1.0,
+    -1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0},
+
+    {0.0, 0.0, -1.0,
+    1.0, 0.0, 0.0,
+    0.0, -1.0, 0.0},
+
+    {0.0, 1.0, 0.0,
+    0.0, 0.0, -1.0,
+    -1.0, 0.0, 0.0},
     
 };
 /* clang-format on */
-static const double k_EtaMin = 0.0;
-static const double k_EtaMax = 45.0;
+
+constexpr double k_EtaMin = 0.0;
+constexpr double k_EtaMax = 45.0;
 
 } // namespace CubicHigh
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 CubicOps::CubicOps() = default;
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 CubicOps::~CubicOps() = default;
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 bool CubicOps::getHasInversion() const
 {
@@ -264,9 +261,7 @@ bool CubicOps::getHasInversion() const
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-int CubicOps::getODFSize() const
+size_t CubicOps::getODFSize() const
 {
   return CubicHigh::k_OdfSize;
 }
@@ -274,13 +269,11 @@ int CubicOps::getODFSize() const
 // -----------------------------------------------------------------------------
 std::array<int32_t, 3> CubicOps::getNumSymmetry() const
 {
-  return {CubicHigh::symSize0, CubicHigh::symSize1, CubicHigh::symSize2};
+  return {CubicHigh::k_SymSize0, CubicHigh::k_SymSize1, CubicHigh::k_SymSize2};
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-int CubicOps::getMDFSize() const
+size_t CubicOps::getMDFSize() const
 {
   return CubicHigh::k_MdfSize;
 }
@@ -292,9 +285,7 @@ int CubicOps::getMdfPlotBins() const
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-int CubicOps::getNumSymOps() const
+size_t CubicOps::getNumSymOps() const
 {
   return CubicHigh::k_SymOpsCount;
 }
@@ -302,19 +293,15 @@ int CubicOps::getNumSymOps() const
 // -----------------------------------------------------------------------------
 std::array<size_t, 3> CubicOps::getOdfNumBins() const
 {
-  return CubicHigh::OdfNumBins;
+  return CubicHigh::k_OdfNumBins;
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 std::string CubicOps::getSymmetryName() const
 {
   return "Cubic m-3m (Oh)"; /* Group 432 */
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 std::string CubicOps::getRotationPointGroup() const
 {
@@ -340,15 +327,11 @@ bool CubicOps::isInsideFZ(const RodriguesDType& rod) const
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 AxisAngleDType CubicOps::calculateMisorientation(const QuatD& q1, const QuatD& q2) const
 {
-  return calculateMisorientationInternal(CubicHigh::QuatSym, q1, q2);
+  return calculateMisorientationInternal(CubicHigh::k_QuatSym, q1, q2);
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 AxisAngleDType CubicOps::calculateMisorientationInternal(const std::vector<QuatD>& quatsym, const QuatD& q1, const QuatD& q2) const
 {
@@ -604,74 +587,46 @@ AxisAngleDType CubicOps::calculateMisorientationInternal(const std::vector<QuatD
   return axisAngle;
 }
 
-QuatD CubicOps::getQuatSymOp(int32_t i) const
+QuatD CubicOps::getQuatSymOp(size_t i) const
 {
-  return CubicHigh::QuatSym[i];
+  return CubicHigh::k_QuatSym[i];
 }
 
-void CubicOps::getRodSymOp(int i, double* r) const
+size_t CubicOps::getNumRodriguesSymOps() const
 {
-  r[0] = CubicHigh::RodSym[i][0];
-  r[1] = CubicHigh::RodSym[i][1];
-  r[2] = CubicHigh::RodSym[i][2];
+  return CubicHigh::k_RodSym.size();
 }
 
-ebsdlib::Matrix3X3D CubicOps::getMatSymOpD(int i) const
+RodriguesDType CubicOps::getRodSymOp(size_t i) const
 {
-  return {CubicHigh::MatSym[i][0][0], CubicHigh::MatSym[i][0][1], CubicHigh::MatSym[i][0][2], CubicHigh::MatSym[i][1][0], CubicHigh::MatSym[i][1][1],
-          CubicHigh::MatSym[i][1][2], CubicHigh::MatSym[i][2][0], CubicHigh::MatSym[i][2][1], CubicHigh::MatSym[i][2][2]};
+  return CubicHigh::k_RodSym[i];
 }
 
-ebsdlib::Matrix3X3F CubicOps::getMatSymOpF(int i) const
+Matrix3X3D CubicOps::getMatSymOpD(size_t i) const
 {
-  return {static_cast<float>(CubicHigh::MatSym[i][0][0]), static_cast<float>(CubicHigh::MatSym[i][0][1]), static_cast<float>(CubicHigh::MatSym[i][0][2]),
-          static_cast<float>(CubicHigh::MatSym[i][1][0]), static_cast<float>(CubicHigh::MatSym[i][1][1]), static_cast<float>(CubicHigh::MatSym[i][1][2]),
-          static_cast<float>(CubicHigh::MatSym[i][2][0]), static_cast<float>(CubicHigh::MatSym[i][2][1]), static_cast<float>(CubicHigh::MatSym[i][2][2])};
+  return CubicHigh::k_MatSym[i];
 }
 
-void CubicOps::getMatSymOp(int i, double g[3][3]) const
+Matrix3X3F CubicOps::getMatSymOpF(size_t i) const
 {
-  g[0][0] = CubicHigh::MatSym[i][0][0];
-  g[0][1] = CubicHigh::MatSym[i][0][1];
-  g[0][2] = CubicHigh::MatSym[i][0][2];
-  g[1][0] = CubicHigh::MatSym[i][1][0];
-  g[1][1] = CubicHigh::MatSym[i][1][1];
-  g[1][2] = CubicHigh::MatSym[i][1][2];
-  g[2][0] = CubicHigh::MatSym[i][2][0];
-  g[2][1] = CubicHigh::MatSym[i][2][1];
-  g[2][2] = CubicHigh::MatSym[i][2][2];
+  return {static_cast<float>(CubicHigh::k_MatSym[i](0, 0)), static_cast<float>(CubicHigh::k_MatSym[i](0, 1)), static_cast<float>(CubicHigh::k_MatSym[i](0, 2)),
+          static_cast<float>(CubicHigh::k_MatSym[i](1, 0)), static_cast<float>(CubicHigh::k_MatSym[i](1, 1)), static_cast<float>(CubicHigh::k_MatSym[i](1, 2)),
+          static_cast<float>(CubicHigh::k_MatSym[i](2, 0)), static_cast<float>(CubicHigh::k_MatSym[i](2, 1)), static_cast<float>(CubicHigh::k_MatSym[i](2, 2))};
 }
 
-void CubicOps::getMatSymOp(int i, float g[3][3]) const
-{
-  g[0][0] = static_cast<float>(CubicHigh::MatSym[i][0][0]);
-  g[0][1] = static_cast<float>(CubicHigh::MatSym[i][0][1]);
-  g[0][2] = static_cast<float>(CubicHigh::MatSym[i][0][2]);
-  g[1][0] = static_cast<float>(CubicHigh::MatSym[i][1][0]);
-  g[1][1] = static_cast<float>(CubicHigh::MatSym[i][1][1]);
-  g[1][2] = static_cast<float>(CubicHigh::MatSym[i][1][2]);
-  g[2][0] = static_cast<float>(CubicHigh::MatSym[i][2][0]);
-  g[2][1] = static_cast<float>(CubicHigh::MatSym[i][2][1]);
-  g[2][2] = static_cast<float>(CubicHigh::MatSym[i][2][2]);
-}
-
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 RodriguesDType CubicOps::getODFFZRod(const RodriguesDType& rod) const
 {
-  return _calcRodNearestOrigin(CubicHigh::RodSym, rod);
+  return _calcRodNearestOrigin(rod);
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 RodriguesDType CubicOps::getMDFFZRod(const RodriguesDType& inRod) const
 {
   double w, n1, n2, n3;
   double FZw, FZn1, FZn2, FZn3;
 
-  RodriguesDType rod = _calcRodNearestOrigin(CubicHigh::RodSym, inRod);
+  RodriguesDType rod = _calcRodNearestOrigin(inRod);
   AxisAngleDType ax = rod.toAxisAngle();
 
   n1 = ax[0];
@@ -725,23 +680,21 @@ RodriguesDType CubicOps::getMDFFZRod(const RodriguesDType& inRod) const
 
 QuatD CubicOps::getNearestQuat(const QuatD& q1, const QuatD& q2) const
 {
-  return _calcNearestQuat(CubicHigh::QuatSym, q1, q2);
+  return _calcNearestQuat(CubicHigh::k_QuatSym, q1, q2);
 }
 
 QuatF CubicOps::getNearestQuat(const QuatF& q1f, const QuatF& q2f) const
 {
-  return _calcNearestQuat(CubicHigh::QuatSym, q1f.to<double>(), q2f.to<double>()).to<float>();
+  return _calcNearestQuat(CubicHigh::k_QuatSym, q1f.to<double>(), q2f.to<double>()).to<float>();
 }
 
 QuatD CubicOps::getFZQuat(const QuatD& qr) const
 {
   LaueOps::FZType fzType = laue_ops::FZtarray[getPointGroup() - 1];
   LaueOps::AxisOrderingType orderingType = laue_ops::FZoarray[getPointGroup() - 1];
-  return ConvertToFZ(CubicHigh::QuatSym, qr, fzType, orderingType);
+  return ConvertToFZ(CubicHigh::k_QuatSym, qr, fzType, orderingType);
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 int CubicOps::getMisoBin(const RodriguesDType& rod) const
 {
@@ -751,21 +704,19 @@ int CubicOps::getMisoBin(const RodriguesDType& rod) const
 
   HomochoricDType ho = rod.toHomochoric();
 
-  dim[0] = CubicHigh::OdfDimInitValue[0];
-  dim[1] = CubicHigh::OdfDimInitValue[1];
-  dim[2] = CubicHigh::OdfDimInitValue[2];
-  step[0] = CubicHigh::OdfDimStepValue[0];
-  step[1] = CubicHigh::OdfDimStepValue[1];
-  step[2] = CubicHigh::OdfDimStepValue[2];
-  bins[0] = static_cast<double>(CubicHigh::OdfNumBins[0]);
-  bins[1] = static_cast<double>(CubicHigh::OdfNumBins[1]);
-  bins[2] = static_cast<double>(CubicHigh::OdfNumBins[2]);
+  dim[0] = CubicHigh::k_OdfDimInitValue[0];
+  dim[1] = CubicHigh::k_OdfDimInitValue[1];
+  dim[2] = CubicHigh::k_OdfDimInitValue[2];
+  step[0] = CubicHigh::k_OdfDimStepValue[0];
+  step[1] = CubicHigh::k_OdfDimStepValue[1];
+  step[2] = CubicHigh::k_OdfDimStepValue[2];
+  bins[0] = static_cast<double>(CubicHigh::k_OdfNumBins[0]);
+  bins[1] = static_cast<double>(CubicHigh::k_OdfNumBins[1]);
+  bins[2] = static_cast<double>(CubicHigh::k_OdfNumBins[2]);
 
   return _calcMisoBin(dim, bins, step, ho);
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 EulerDType CubicOps::determineEulerAngles(double random[3], int choose) const
 {
@@ -774,15 +725,15 @@ EulerDType CubicOps::determineEulerAngles(double random[3], int choose) const
   int32_t phi[3];
   double h1, h2, h3;
 
-  init[0] = CubicHigh::OdfDimInitValue[0];
-  init[1] = CubicHigh::OdfDimInitValue[1];
-  init[2] = CubicHigh::OdfDimInitValue[2];
-  step[0] = CubicHigh::OdfDimStepValue[0];
-  step[1] = CubicHigh::OdfDimStepValue[1];
-  step[2] = CubicHigh::OdfDimStepValue[2];
-  phi[0] = static_cast<int32_t>(choose % CubicHigh::OdfNumBins[0]);
-  phi[1] = static_cast<int32_t>((choose / CubicHigh::OdfNumBins[0]) % CubicHigh::OdfNumBins[1]);
-  phi[2] = static_cast<int32_t>(choose / (CubicHigh::OdfNumBins[0] * CubicHigh::OdfNumBins[1]));
+  init[0] = CubicHigh::k_OdfDimInitValue[0];
+  init[1] = CubicHigh::k_OdfDimInitValue[1];
+  init[2] = CubicHigh::k_OdfDimInitValue[2];
+  step[0] = CubicHigh::k_OdfDimStepValue[0];
+  step[1] = CubicHigh::k_OdfDimStepValue[1];
+  step[2] = CubicHigh::k_OdfDimStepValue[2];
+  phi[0] = static_cast<int32_t>(choose % CubicHigh::k_OdfNumBins[0]);
+  phi[1] = static_cast<int32_t>((choose / CubicHigh::k_OdfNumBins[0]) % CubicHigh::k_OdfNumBins[1]);
+  phi[2] = static_cast<int32_t>(choose / (CubicHigh::k_OdfNumBins[0] * CubicHigh::k_OdfNumBins[1]));
 
   _calcDetermineHomochoricValues(random, init, step, phi, h1, h2, h3);
 
@@ -793,18 +744,14 @@ EulerDType CubicOps::determineEulerAngles(double random[3], int choose) const
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 EulerDType CubicOps::randomizeEulerAngles(const EulerDType& synea) const
 {
   size_t symOp = getRandomSymmetryOperatorIndex(CubicHigh::k_SymOpsCount);
   QuatD quat = synea.toQuaternion();
-  QuatD qc = CubicHigh::QuatSym[symOp] * quat;
+  QuatD qc = CubicHigh::k_QuatSym[symOp] * quat;
   return QuaternionDType(qc).toEuler();
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 RodriguesDType CubicOps::determineRodriguesVector(double random[3], int choose) const
 {
@@ -813,15 +760,15 @@ RodriguesDType CubicOps::determineRodriguesVector(double random[3], int choose) 
   int32_t phi[3];
   double h1, h2, h3;
 
-  init[0] = CubicHigh::OdfDimInitValue[0];
-  init[1] = CubicHigh::OdfDimInitValue[1];
-  init[2] = CubicHigh::OdfDimInitValue[2];
-  step[0] = CubicHigh::OdfDimStepValue[0];
-  step[1] = CubicHigh::OdfDimStepValue[1];
-  step[2] = CubicHigh::OdfDimStepValue[2];
-  phi[0] = static_cast<int32_t>(choose % CubicHigh::OdfNumBins[0]);
-  phi[1] = static_cast<int32_t>((choose / CubicHigh::OdfNumBins[0]) % CubicHigh::OdfNumBins[1]);
-  phi[2] = static_cast<int32_t>(choose / (CubicHigh::OdfNumBins[0] * CubicHigh::OdfNumBins[1]));
+  init[0] = CubicHigh::k_OdfDimInitValue[0];
+  init[1] = CubicHigh::k_OdfDimInitValue[1];
+  init[2] = CubicHigh::k_OdfDimInitValue[2];
+  step[0] = CubicHigh::k_OdfDimStepValue[0];
+  step[1] = CubicHigh::k_OdfDimStepValue[1];
+  step[2] = CubicHigh::k_OdfDimStepValue[2];
+  phi[0] = static_cast<int32_t>(choose % CubicHigh::k_OdfNumBins[0]);
+  phi[1] = static_cast<int32_t>((choose / CubicHigh::k_OdfNumBins[0]) % CubicHigh::k_OdfNumBins[1]);
+  phi[2] = static_cast<int32_t>(choose / (CubicHigh::k_OdfNumBins[0] * CubicHigh::k_OdfNumBins[1]));
 
   _calcDetermineHomochoricValues(random, init, step, phi, h1, h2, h3);
   RodriguesDType ro = HomochoricDType(h1, h2, h3).toRodrigues();
@@ -829,8 +776,6 @@ RodriguesDType CubicOps::determineRodriguesVector(double random[3], int choose) 
   return ro;
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 int CubicOps::getOdfBin(const RodriguesDType& rod) const
 {
@@ -840,15 +785,15 @@ int CubicOps::getOdfBin(const RodriguesDType& rod) const
 
   HomochoricDType ho = rod.toHomochoric();
 
-  dim[0] = CubicHigh::OdfDimInitValue[0];
-  dim[1] = CubicHigh::OdfDimInitValue[1];
-  dim[2] = CubicHigh::OdfDimInitValue[2];
-  step[0] = CubicHigh::OdfDimStepValue[0];
-  step[1] = CubicHigh::OdfDimStepValue[1];
-  step[2] = CubicHigh::OdfDimStepValue[2];
-  bins[0] = static_cast<double>(CubicHigh::OdfNumBins[0]);
-  bins[1] = static_cast<double>(CubicHigh::OdfNumBins[1]);
-  bins[2] = static_cast<double>(CubicHigh::OdfNumBins[2]);
+  dim[0] = CubicHigh::k_OdfDimInitValue[0];
+  dim[1] = CubicHigh::k_OdfDimInitValue[1];
+  dim[2] = CubicHigh::k_OdfDimInitValue[2];
+  step[0] = CubicHigh::k_OdfDimStepValue[0];
+  step[1] = CubicHigh::k_OdfDimStepValue[1];
+  step[2] = CubicHigh::k_OdfDimStepValue[2];
+  bins[0] = static_cast<double>(CubicHigh::k_OdfNumBins[0]);
+  bins[1] = static_cast<double>(CubicHigh::k_OdfNumBins[1]);
+  bins[2] = static_cast<double>(CubicHigh::k_OdfNumBins[2]);
 
   return _calcODFBin(dim, bins, step, ho);
 }
@@ -1001,18 +946,18 @@ void CubicOps::getSchmidFactorAndSS(double load[3], double plane[3], double dire
   {
     // compute slip system
     double slipPlane[3] = {0};
-    slipPlane[2] = CubicHigh::MatSym[i][2][0] * plane[0] + CubicHigh::MatSym[i][2][1] * plane[1] + CubicHigh::MatSym[i][2][2] * plane[2];
+    slipPlane[2] = CubicHigh::k_MatSym[i](2, 0) * plane[0] + CubicHigh::k_MatSym[i](2, 1) * plane[1] + CubicHigh::k_MatSym[i](2, 2) * plane[2];
 
     // dont consider negative z planes (to avoid duplicates)
     if(slipPlane[2] >= 0)
     {
-      slipPlane[0] = CubicHigh::MatSym[i][0][0] * plane[0] + CubicHigh::MatSym[i][0][1] * plane[1] + CubicHigh::MatSym[i][0][2] * plane[2];
-      slipPlane[1] = CubicHigh::MatSym[i][1][0] * plane[0] + CubicHigh::MatSym[i][1][1] * plane[1] + CubicHigh::MatSym[i][1][2] * plane[2];
+      slipPlane[0] = CubicHigh::k_MatSym[i](0, 0) * plane[0] + CubicHigh::k_MatSym[i](0, 1) * plane[1] + CubicHigh::k_MatSym[i](0, 2) * plane[2];
+      slipPlane[1] = CubicHigh::k_MatSym[i](1, 0) * plane[0] + CubicHigh::k_MatSym[i](1, 1) * plane[1] + CubicHigh::k_MatSym[i](1, 2) * plane[2];
 
       double slipDirection[3] = {0};
-      slipDirection[0] = CubicHigh::MatSym[i][0][0] * direction[0] + CubicHigh::MatSym[i][0][1] * direction[1] + CubicHigh::MatSym[i][0][2] * direction[2];
-      slipDirection[1] = CubicHigh::MatSym[i][1][0] * direction[0] + CubicHigh::MatSym[i][1][1] * direction[1] + CubicHigh::MatSym[i][1][2] * direction[2];
-      slipDirection[2] = CubicHigh::MatSym[i][2][0] * direction[0] + CubicHigh::MatSym[i][2][1] * direction[1] + CubicHigh::MatSym[i][2][2] * direction[2];
+      slipDirection[0] = CubicHigh::k_MatSym[i](0, 0) * direction[0] + CubicHigh::k_MatSym[i](0, 1) * direction[1] + CubicHigh::k_MatSym[i](0, 2) * direction[2];
+      slipDirection[1] = CubicHigh::k_MatSym[i](1, 0) * direction[0] + CubicHigh::k_MatSym[i](1, 1) * direction[1] + CubicHigh::k_MatSym[i](1, 2) * direction[2];
+      slipDirection[2] = CubicHigh::k_MatSym[i](2, 0) * direction[0] + CubicHigh::k_MatSym[i](2, 1) * direction[1] + CubicHigh::k_MatSym[i](2, 2) * direction[2];
 
       double cosPhi = std::fabs(load[0] * slipPlane[0] + load[1] * slipPlane[1] + load[2] * slipPlane[2]) / planeMag;
       double cosLambda = std::fabs(load[0] * slipDirection[0] + load[1] * slipDirection[1] + load[2] * slipDirection[2]) / directionMag;
@@ -1029,14 +974,15 @@ void CubicOps::getSchmidFactorAndSS(double load[3], double plane[3], double dire
   }
 }
 
-double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LD[3]) const
+double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LDPtr[3]) const
 {
-  ebsdlib::Matrix3X1D hkl1;
-  ebsdlib::Matrix3X1D uvw1;
-  ebsdlib::Matrix3X1D hkl2;
-  ebsdlib::Matrix3X1D uvw2;
-  ebsdlib::Matrix3X1D slipDirection;
-  ebsdlib::Matrix3X1D slipPlane;
+  Matrix3X1D hkl1;
+  Matrix3X1D uvw1;
+  Matrix3X1D hkl2;
+  Matrix3X1D uvw2;
+  Matrix3X1D slipDirection;
+  Matrix3X1D slipPlane;
+  Matrix3X1D LD(LDPtr);
 
   double schmidFactor1 = 0, schmidFactor2 = 0, maxSchmidFactor = 0;
   double directionComponent1 = 0, planeComponent1 = 0;
@@ -1044,8 +990,8 @@ double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LD[3]) const
   double planeMisalignment = 0, directionMisalignment = 0;
   int ss1 = 0, ss2 = 0;
 
-  ebsdlib::Matrix3X3D g1 = QuaternionDType(q1).toOrientationMatrix().toGMatrix().transpose();
-  ebsdlib::Matrix3X3D g2 = QuaternionDType(q2).toOrientationMatrix().toGMatrix().transpose();
+  Matrix3X3D g1 = QuaternionDType(q1).toOrientationMatrix().toGMatrix().transpose();
+  Matrix3X3D g2 = QuaternionDType(q2).toOrientationMatrix().toGMatrix().transpose();
 
   for(int i = 0; i < 12; i++)
   {
@@ -1059,8 +1005,8 @@ double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LD[3]) const
     uvw1 = g1 * slipDirection;
     hkl1 = hkl1.normalize();
     uvw1 = uvw1.normalize();
-    directionComponent1 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, uvw1.data()));
-    planeComponent1 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, hkl1.data()));
+    directionComponent1 = std::fabs(LD.cosTheta(uvw1));
+    planeComponent1 = std::fabs(LD.cosTheta(hkl1));
     schmidFactor1 = directionComponent1 * planeComponent1;
     if(schmidFactor1 > maxSchmidFactor)
     {
@@ -1096,8 +1042,8 @@ double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LD[3]) const
     hkl2 = hkl2.normalize();
     uvw2 = uvw2.normalize();
 
-    directionComponent2 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, uvw2.data()));
-    planeComponent2 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, hkl2.data()));
+    directionComponent2 = std::fabs(LD.cosTheta(uvw2));
+    planeComponent2 = std::fabs(LD.cosTheta(hkl2));
     schmidFactor2 = directionComponent2 * planeComponent2;
     if(schmidFactor2 > maxSchmidFactor)
     {
@@ -1117,19 +1063,20 @@ double CubicOps::getmPrime(const QuatD& q1, const QuatD& q2, double LD[3]) const
   hkl2 = hkl2.normalize();
   uvw2 = uvw2.normalize();
 
-  planeMisalignment = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(hkl1.data(), hkl2.data()));
-  directionMisalignment = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(uvw1.data(), uvw2.data()));
+  planeMisalignment = std::fabs(hkl1.cosTheta(hkl2));
+  directionMisalignment = std::fabs(uvw1.cosTheta(uvw2));
   return planeMisalignment * directionMisalignment;
 }
 
-double CubicOps::getF1(const QuatD& q1, const QuatD& q2, double LD[3], bool maxSF) const
+double CubicOps::getF1(const QuatD& q1, const QuatD& q2, double LDPtr[3], bool maxSF) const
 {
-  ebsdlib::Matrix3X1D hkl1;
-  ebsdlib::Matrix3X1D uvw1;
-  ebsdlib::Matrix3X1D hkl2;
-  ebsdlib::Matrix3X1D uvw2;
-  ebsdlib::Matrix3X1D slipDirection;
-  ebsdlib::Matrix3X1D slipPlane;
+  Matrix3X1D hkl1;
+  Matrix3X1D uvw1;
+  Matrix3X1D hkl2;
+  Matrix3X1D uvw2;
+  Matrix3X1D slipDirection;
+  Matrix3X1D slipPlane;
+  Matrix3X1D LD(LDPtr);
 
   double directionMisalignment = 0, totalDirectionMisalignment = 0;
   double schmidFactor1 = 0, maxSchmidFactor = 0;
@@ -1138,10 +1085,9 @@ double CubicOps::getF1(const QuatD& q1, const QuatD& q2, double LD[3], bool maxS
   double maxF1 = 0.0;
   double F1 = 0.0;
 
-  ebsdlib::Matrix3X3D g1 = QuaternionDType(q1).toOrientationMatrix().toGMatrix().transpose();
-  ebsdlib::Matrix3X3D g2 = QuaternionDType(q2).toOrientationMatrix().toGMatrix().transpose();
-
-  ebsdlib::EbsdMatrixMath::Normalize3x1(LD);
+  Matrix3X3D g1 = QuaternionDType(q1).toOrientationMatrix().toGMatrix().transpose();
+  Matrix3X3D g2 = QuaternionDType(q2).toOrientationMatrix().toGMatrix().transpose();
+  LD = LD.normalize();
 
   if(maxSF)
   {
@@ -1159,8 +1105,8 @@ double CubicOps::getF1(const QuatD& q1, const QuatD& q2, double LD[3], bool maxS
     uvw1 = g1 * slipDirection;
     hkl1 = hkl1.normalize();
     uvw1 = uvw1.normalize();
-    directionComponent1 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, uvw1.data()));
-    planeComponent1 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, hkl1.data()));
+    directionComponent1 = std::fabs(LD.cosTheta(uvw1));
+    planeComponent1 = std::fabs(LD.cosTheta(hkl1));
     schmidFactor1 = directionComponent1 * planeComponent1;
     if(schmidFactor1 > maxSchmidFactor || !maxSF)
     {
@@ -1182,7 +1128,7 @@ double CubicOps::getF1(const QuatD& q1, const QuatD& q2, double LD[3], bool maxS
         hkl2 = hkl2.normalize();
         uvw2 = uvw2.normalize();
 
-        directionMisalignment = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(uvw1.data(), uvw2.data()));
+        directionMisalignment = std::fabs(uvw1.cosTheta(uvw2));
         totalDirectionMisalignment = totalDirectionMisalignment + directionMisalignment;
       }
       F1 = schmidFactor1 * directionComponent1 * totalDirectionMisalignment;
@@ -1202,14 +1148,15 @@ double CubicOps::getF1(const QuatD& q1, const QuatD& q2, double LD[3], bool maxS
   return F1;
 }
 
-double CubicOps::getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bool maxSF) const
+double CubicOps::getF1spt(const QuatD& q1, const QuatD& q2, double LDPtr[3], bool maxSF) const
 {
-  ebsdlib::Matrix3X1D hkl1;
-  ebsdlib::Matrix3X1D uvw1;
-  ebsdlib::Matrix3X1D hkl2;
-  ebsdlib::Matrix3X1D uvw2;
-  ebsdlib::Matrix3X1D slipDirection;
-  ebsdlib::Matrix3X1D slipPlane;
+  Matrix3X1D hkl1;
+  Matrix3X1D uvw1;
+  Matrix3X1D hkl2;
+  Matrix3X1D uvw2;
+  Matrix3X1D slipDirection;
+  Matrix3X1D slipPlane;
+  Matrix3X1D LD(LDPtr);
 
   double directionMisalignment = 0, totalDirectionMisalignment = 0;
   double planeMisalignment = 0, totalPlaneMisalignment = 0;
@@ -1218,10 +1165,10 @@ double CubicOps::getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bool m
   double maxF1spt = 0.0;
   double F1spt = 0.0f;
 
-  ebsdlib::Matrix3X3D g1 = QuaternionDType(q1).toOrientationMatrix().toGMatrix().transpose();
-  ebsdlib::Matrix3X3D g2 = QuaternionDType(q2).toOrientationMatrix().toGMatrix().transpose();
+  Matrix3X3D g1 = QuaternionDType(q1).toOrientationMatrix().toGMatrix().transpose();
+  Matrix3X3D g2 = QuaternionDType(q2).toOrientationMatrix().toGMatrix().transpose();
 
-  ebsdlib::EbsdMatrixMath::Normalize3x1(LD);
+  LD = LD.normalize();
 
   if(maxSF)
   {
@@ -1241,8 +1188,8 @@ double CubicOps::getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bool m
     hkl1 = hkl1.normalize();
     uvw1 = uvw1.normalize();
 
-    directionComponent1 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, uvw1.data()));
-    planeComponent1 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, hkl1.data()));
+    directionComponent1 = std::fabs(LD.cosTheta(uvw1));
+    planeComponent1 = std::fabs(LD.cosTheta(hkl1));
     schmidFactor1 = directionComponent1 * planeComponent1;
     if(schmidFactor1 > maxSchmidFactor || !maxSF)
     {
@@ -1266,8 +1213,8 @@ double CubicOps::getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bool m
         hkl2 = hkl2.normalize();
         uvw2 = uvw2.normalize();
 
-        directionMisalignment = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(uvw1.data(), uvw2.data()));
-        planeMisalignment = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(hkl1.data(), hkl2.data()));
+        directionMisalignment = std::fabs(uvw1.cosTheta(uvw2));
+        planeMisalignment = std::fabs(hkl1.cosTheta(hkl2));
         totalDirectionMisalignment = totalDirectionMisalignment + directionMisalignment;
         totalPlaneMisalignment = totalPlaneMisalignment + planeMisalignment;
       }
@@ -1288,14 +1235,15 @@ double CubicOps::getF1spt(const QuatD& q1, const QuatD& q2, double LD[3], bool m
   return F1spt;
 }
 
-double CubicOps::getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool maxSF) const
+double CubicOps::getF7(const QuatD& q1, const QuatD& q2, double LDPtr[3], bool maxSF) const
 {
-  ebsdlib::Matrix3X1D hkl1;
-  ebsdlib::Matrix3X1D uvw1;
-  ebsdlib::Matrix3X1D hkl2;
-  ebsdlib::Matrix3X1D uvw2;
-  ebsdlib::Matrix3X1D slipDirection;
-  ebsdlib::Matrix3X1D slipPlane;
+  Matrix3X1D hkl1;
+  Matrix3X1D uvw1;
+  Matrix3X1D hkl2;
+  Matrix3X1D uvw2;
+  Matrix3X1D slipDirection;
+  Matrix3X1D slipPlane;
+  Matrix3X1D LD(LDPtr);
 
   double directionMisalignment = 0, totalDirectionMisalignment = 0;
   double schmidFactor1 = 0.0, maxSchmidFactor = 0.0;
@@ -1306,10 +1254,10 @@ double CubicOps::getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool maxS
   double maxF7 = 0.0;
   double F7 = 0.0f;
 
-  ebsdlib::Matrix3X3D g1 = QuaternionDType(q1).toOrientationMatrix().toGMatrix().transpose();
-  ebsdlib::Matrix3X3D g2 = QuaternionDType(q2).toOrientationMatrix().toGMatrix().transpose();
+  Matrix3X3D g1 = QuaternionDType(q1).toOrientationMatrix().toGMatrix().transpose();
+  Matrix3X3D g2 = QuaternionDType(q2).toOrientationMatrix().toGMatrix().transpose();
 
-  ebsdlib::EbsdMatrixMath::Normalize3x1(LD);
+  LD = LD.normalize();
 
   for(int i = 0; i < 12; i++)
   {
@@ -1323,8 +1271,8 @@ double CubicOps::getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool maxS
     uvw1 = g1 * slipDirection;
     hkl1 = hkl1.normalize();
     uvw1 = uvw1.normalize();
-    directionComponent1 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, uvw1.data()));
-    planeComponent1 = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(LD, hkl1.data()));
+    directionComponent1 = std::fabs(LD.cosTheta(uvw1));
+    planeComponent1 = std::fabs(LD.cosTheta(hkl1));
     schmidFactor1 = directionComponent1 * planeComponent1;
     if(schmidFactor1 > maxSchmidFactor || !maxSF)
     {
@@ -1346,7 +1294,7 @@ double CubicOps::getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool maxS
         hkl2 = hkl2.normalize();
         uvw2 = uvw2.normalize();
 
-        directionMisalignment = std::fabs(ebsdlib::GeometryMath::CosThetaBetweenVectors(uvw1.data(), uvw2.data()));
+        directionMisalignment = std::fabs(uvw1.cosTheta(uvw2));
         totalDirectionMisalignment = totalDirectionMisalignment + directionMisalignment;
       }
       F7 = directionComponent1 * directionComponent1 * totalDirectionMisalignment;
@@ -1366,8 +1314,6 @@ double CubicOps::getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool maxS
   return F7;
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 namespace CubicHigh
 {
@@ -1390,13 +1336,13 @@ public:
 
   void generate(size_t start, size_t end) const
   {
-    ebsdlib::Matrix3X3D gTranspose;
-    ebsdlib::Matrix3X1D direction(0.0, 0.0, 0.0);
+    Matrix3X3D gTranspose;
+    Matrix3X1D direction(0.0, 0.0, 0.0);
 
     for(size_t i = start; i < end; ++i)
     {
 
-      ebsdlib::Matrix3X3D g(EulerDType(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2)).toOrientationMatrix().data());
+      Matrix3X3D g(EulerDType(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2)).toOrientationMatrix().data());
       gTranspose = g.transpose();
 
       // -----------------------------------------------------------------------------
@@ -1511,24 +1457,22 @@ public:
 } // namespace CubicHigh
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 void CubicOps::generateSphereCoordsFromEulers(ebsdlib::FloatArrayType* eulers, ebsdlib::FloatArrayType* xyz001, ebsdlib::FloatArrayType* xyz011, ebsdlib::FloatArrayType* xyz111) const
 {
   size_t nOrientations = eulers->getNumberOfTuples();
 
   // Sanity Check the size of the arrays
-  if(xyz001->getNumberOfTuples() < nOrientations * CubicHigh::symSize0)
+  if(xyz001->getNumberOfTuples() < nOrientations * CubicHigh::k_SymSize0)
   {
-    xyz001->resizeTuples(nOrientations * CubicHigh::symSize0 * 3);
+    xyz001->resizeTuples(nOrientations * CubicHigh::k_SymSize0 * 3);
   }
-  if(xyz011->getNumberOfTuples() < nOrientations * CubicHigh::symSize1)
+  if(xyz011->getNumberOfTuples() < nOrientations * CubicHigh::k_SymSize1)
   {
-    xyz011->resizeTuples(nOrientations * CubicHigh::symSize1 * 3);
+    xyz011->resizeTuples(nOrientations * CubicHigh::k_SymSize1 * 3);
   }
-  if(xyz111->getNumberOfTuples() < nOrientations * CubicHigh::symSize2)
+  if(xyz111->getNumberOfTuples() < nOrientations * CubicHigh::k_SymSize2)
   {
-    xyz111->resizeTuples(nOrientations * CubicHigh::symSize2 * 3);
+    xyz111->resizeTuples(nOrientations * CubicHigh::k_SymSize2 * 3);
   }
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
@@ -1702,8 +1646,6 @@ std::array<double, 3> CubicOps::getIpfColorAngleLimits(double eta) const
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 bool CubicOps::inUnitTriangle(double eta, double chi) const
 {
   double etaDeg = eta * ebsdlib::constants::k_180OverPiD;
@@ -1722,15 +1664,11 @@ bool CubicOps::inUnitTriangle(double eta, double chi) const
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 ebsdlib::Rgb CubicOps::generateIPFColor(double* eulers, double* refDir, bool degToRad) const
 {
   return computeIPFColor(eulers, refDir, degToRad);
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 ebsdlib::Rgb CubicOps::generateIPFColor(double phi1, double phi, double phi2, double refDir0, double refDir1, double refDir2, bool degToRad) const
 {
@@ -1740,13 +1678,11 @@ ebsdlib::Rgb CubicOps::generateIPFColor(double phi1, double phi, double phi2, do
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 ebsdlib::Rgb CubicOps::generateRodriguesColor(double r1, double r2, double r3) const
 {
-  double range1 = 2.0f * CubicHigh::OdfDimInitValue[0];
-  double range2 = 2.0f * CubicHigh::OdfDimInitValue[1];
-  double range3 = 2.0f * CubicHigh::OdfDimInitValue[2];
+  double range1 = 2.0f * CubicHigh::k_OdfDimInitValue[0];
+  double range2 = 2.0f * CubicHigh::k_OdfDimInitValue[1];
+  double range3 = 2.0f * CubicHigh::k_OdfDimInitValue[2];
   double max1 = range1 / 2.0f;
   double max2 = range2 / 2.0f;
   double max3 = range3 / 2.0f;
@@ -1758,15 +1694,11 @@ ebsdlib::Rgb CubicOps::generateRodriguesColor(double r1, double r2, double r3) c
 }
 
 // -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 std::array<std::string, 3> CubicOps::getDefaultPoleFigureNames() const
 {
   return {"<001>", "<011>", "<111>"};
 }
 
-// -----------------------------------------------------------------------------
-//
 // -----------------------------------------------------------------------------
 std::vector<ebsdlib::UInt8ArrayType::Pointer> CubicOps::generatePoleFigure(PoleFigureConfiguration_t& config) const
 {
@@ -1793,11 +1725,11 @@ std::vector<ebsdlib::UInt8ArrayType::Pointer> CubicOps::generatePoleFigure(PoleF
   // Create an Array to hold the XYZ Coordinates which are the coords on the sphere.
   // this is size for CUBIC ONLY, <001> Family
   std::vector<size_t> dims(1, 3);
-  ebsdlib::FloatArrayType::Pointer xyz001 = ebsdlib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize0, dims, label0 + std::string("xyzCoords"), true);
+  ebsdlib::FloatArrayType::Pointer xyz001 = ebsdlib::FloatArrayType::CreateArray(numOrientations * CubicHigh::k_SymSize0, dims, label0 + std::string("xyzCoords"), true);
   // this is size for CUBIC ONLY, <011> Family
-  ebsdlib::FloatArrayType::Pointer xyz011 = ebsdlib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize1, dims, label1 + std::string("xyzCoords"), true);
+  ebsdlib::FloatArrayType::Pointer xyz011 = ebsdlib::FloatArrayType::CreateArray(numOrientations * CubicHigh::k_SymSize1, dims, label1 + std::string("xyzCoords"), true);
   // this is size for CUBIC ONLY, <111> Family
-  ebsdlib::FloatArrayType::Pointer xyz111 = ebsdlib::FloatArrayType::CreateArray(numOrientations * CubicHigh::symSize2, dims, label2 + std::string("xyzCoords"), true);
+  ebsdlib::FloatArrayType::Pointer xyz111 = ebsdlib::FloatArrayType::CreateArray(numOrientations * CubicHigh::k_SymSize2, dims, label2 + std::string("xyzCoords"), true);
 
   config.sphereRadius = 1.0f;
 
@@ -1805,7 +1737,7 @@ std::vector<ebsdlib::UInt8ArrayType::Pointer> CubicOps::generatePoleFigure(PoleF
   generateSphereCoordsFromEulers(config.eulers, xyz001.get(), xyz011.get(), xyz111.get());
 
   // These arrays hold the "intensity" images which eventually get converted to an actual Color RGB image
-  // Generate the modified Lambert projection images (Squares, 2 of them, 1 for northern hemisphere, 1 for southern hemisphere
+  // Generate the modified Lambert projection images (Squares, 2 of them, 1 for Northern Hemisphere, 1 for Southern Hemisphere
   ebsdlib::DoubleArrayType::Pointer intensity001 = ebsdlib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label0 + "_Intensity_Image", true);
   ebsdlib::DoubleArrayType::Pointer intensity011 = ebsdlib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label1 + "_Intensity_Image", true);
   ebsdlib::DoubleArrayType::Pointer intensity111 = ebsdlib::DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label2 + "_Intensity_Image", true);
@@ -1958,7 +1890,7 @@ ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const CubicOps* ops, int imageD
   double theta = 0.0f;
   double k_RootOfHalf = sqrtf(0.5f);
 
-  ebsdlib::Matrix3X1D orientation(0.0, 0.0, 0.0);
+  Matrix3X1D orientation(0.0, 0.0, 0.0);
   ebsdlib::Rgb color;
   size_t idx = 0;
   size_t yScanLineIndex = 0; // We use this to control where the data is drawn. Otherwise, the image will come out flipped vertically
@@ -2049,12 +1981,11 @@ void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float
   };
   std::vector<bool> drawAngle = {false, false, false, false, false, false, false, false};
 
-  float radius = 1.0; // Work with a Unit Circle.
   for(size_t idx = 0; idx < angles.size(); idx++)
   {
-    radius = 1.0F;
+    float radius = 1.0f;
     float angle = angles[idx];
-    float rads = angle * M_PI / 180.0f;
+    float rads = angle * ebsdlib::constants::k_DegToRadF;
     float x = radius * (cos(rads));
     float y = radius * (sin(rads));
 
@@ -2293,13 +2224,13 @@ CubicOps::Pointer CubicOps::NullPointer()
 // -----------------------------------------------------------------------------
 std::string CubicOps::getNameOfClass() const
 {
-  return std::string("CubicOps");
+  return {"CubicOps"};
 }
 
 // -----------------------------------------------------------------------------
 std::string CubicOps::ClassName()
 {
-  return std::string("CubicOps");
+  return {"CubicOps"};
 }
 
 // -----------------------------------------------------------------------------
