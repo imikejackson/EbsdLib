@@ -25,6 +25,29 @@ set(EbsdLib_UnitTest_SRCS
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/ODFTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/TextureTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/OrientationConverterTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/Matrix3X1Test.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/Matrix3X3Test.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/ArrayHelpersTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/EbsdDataArrayTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/EbsdStringUtilsTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/EbsdTransformTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/EbsdLibRandomTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/OrientationMathTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/ColorTableTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/LambertUtilitiesTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/StereographicProjectionTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/TexturePresetTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/PhaseTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/LaueOpsTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/ModifiedLambertProjection3DTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/ModifiedLambertProjectionTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/OrientationTransformationTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/ToolTipGeneratorTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/PoleFigureDataTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/CanvasUtilitiesTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/ModifiedLambertProjectionArrayTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/PoleFigureUtilitiesTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/TiffWriterTest.cpp
 )
 
 
@@ -45,6 +68,11 @@ target_link_libraries(${UNIT_TEST_TARGET}
   PRIVATE
     EbsdLib
     Catch2::Catch2
+)
+
+target_include_directories(${UNIT_TEST_TARGET}
+  PRIVATE
+    "${EbsdLibProj_SOURCE_DIR}/3rdParty/canvas_ity/src"
 )
 
 

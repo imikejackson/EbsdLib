@@ -59,6 +59,12 @@ There are **12 active test files** compiled into a single `EbsdLibUnitTest` exec
 **Severity:** MEDIUM - Tests pass even with wildly incorrect values
 **Issue:** The tolerance check uses `delta < 1.0E6` (one million) instead of `1.0E-6` (one millionth). This means the round-trip conversion tests will pass even if values are off by up to a million, making the tests effectively useless for catching conversion errors.
 
+### Bug 5: `EbsdDataArray::eraseTuples()` - Does not update `m_NumTuples`
+
+**File:** `Source/EbsdLib/Core/EbsdDataArray.cpp:678`
+**Severity:** MEDIUM - `getNumberOfTuples()` returns stale value after eraseTuples
+**Issue:** The `eraseTuples()` method updates `m_Size`, `m_MaxId`, and `m_Array` but never updates `m_NumTuples`. After calling `eraseTuples()`, `getNumberOfTuples()` returns the original tuple count instead of the new (reduced) count. `getSize()` correctly returns the new total element count.
+
 ---
 
 ## Classes Requiring Unit Tests
@@ -70,7 +76,7 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 1. `EbsdDataArray<T>` - Core data container
 
 - **File:** `Source/EbsdLib/Core/EbsdDataArray.hpp`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/EbsdDataArrayTest.cpp` (23 test cases)
 - **Why:** Core template class used by virtually every reader and computation. Wraps raw arrays with lifecycle management.
 - **Recommended tests:**
   - Construction (default, sized, from existing pointer)
@@ -85,7 +91,7 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 2. `Matrix3X1<T>` - 3x1 vector operations
 
 - **File:** `Source/EbsdLib/Math/Matrix3X1.hpp`
-- **Status:** Only `cosTheta` tested (in QuaternionTest)
+- **Status:** **DONE** - `Source/Test/Matrix3X1Test.cpp` (20 test cases)
 - **Why:** Core math class with known bugs (see Bugs #1 and #2)
 - **Recommended tests:**
   - Construction and element access
@@ -99,7 +105,7 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 3. `Matrix3X3<T>` - 3x3 matrix operations
 
 - **File:** `Source/EbsdLib/Math/Matrix3X3.hpp`
-- **Status:** Exercised in TextureTest but no assertions on results
+- **Status:** **DONE** - `Source/Test/Matrix3X3Test.cpp` (23 test cases)
 - **Why:** Used in orientation math, coordinate transforms; currently only smoke-tested
 - **Recommended tests:**
   - Construction and element access
@@ -145,7 +151,7 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 7. `OrientationMath` - Crystallographic math
 
 - **File:** `Source/EbsdLib/Core/OrientationMath.h`
-- **Status:** No direct tests (indirectly exercised by ConvertToFundamentalZoneTest)
+- **Status:** **DONE** - `Source/Test/OrientationMathTest.cpp` (12 test cases)
 - **Why:** Static methods for misorientation calculations, widely used
 - **Recommended tests:**
   - `axisAngletoMatrix()`, `quatsToMatrix()`
@@ -156,7 +162,7 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 8. `EbsdStringUtils` - String utilities
 
 - **File:** `Source/EbsdLib/Utilities/EbsdStringUtils.hpp`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/EbsdStringUtilsTest.cpp` (18 test cases)
 - **Why:** String parsing utilities used by all readers
 - **Recommended tests:**
   - `split()`, `tokenize()` with various delimiters
@@ -168,7 +174,7 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 9. `EbsdTransform` - Reference frame transformations
 
 - **File:** `Source/EbsdLib/Core/EbsdTransform.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/EbsdTransformTest.cpp` (6 test cases)
 - **Why:** Transforms sample and Euler reference frames; errors here corrupt all downstream analysis
 - **Recommended tests:**
   - Sample reference frame transformations (all axis combinations)
@@ -179,7 +185,7 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 10. `EbsdLibRandom` - PRNG
 
 - **File:** `Source/EbsdLib/Math/EbsdLibRandom.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/EbsdLibRandomTest.cpp` (9 test cases)
 - **Why:** Mersenne Twister wrapper; used for texture generation
 - **Recommended tests:**
   - Seeded deterministic output verification
@@ -189,7 +195,7 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 11. `ArrayHelpers<T,K>` - Template math helpers
 
 - **File:** `Source/EbsdLib/Math/ArrayHelpers.hpp`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/ArrayHelpersTest.cpp` (13 test cases)
 - **Why:** Static utility methods used in orientation conversions
 - **Recommended tests:**
   - `splat()`, `multiply()`, `scalarMultiply()`
@@ -213,43 +219,43 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 13. `ColorTable` / `ColorUtilities` - Color handling
 
 - **Files:** `Source/EbsdLib/Utilities/ColorTable.h`, `Source/EbsdLib/Utilities/ColorUtilities.h`
-- **Status:** No direct tests
+- **Status:** **DONE** - `Source/Test/ColorTableTest.cpp` (11 test cases)
 - **Recommended tests:** `RgbColor` helpers, HSV-to-RGB conversion, color component extraction
 
 #### 14. `LambertUtilities` - Square-to-sphere mapping
 
 - **File:** `Source/EbsdLib/Utilities/LambertUtilities.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/LambertUtilitiesTest.cpp` (4 test cases)
 - **Recommended tests:** Square-to-sphere and sphere-to-square conversions, round-trip consistency, boundary values
 
 #### 15. `ModifiedLambertProjection` - Lambert projection
 
 - **File:** `Source/EbsdLib/Utilities/ModifiedLambertProjection.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/ModifiedLambertProjectionTest.cpp` (7 test cases)
 - **Recommended tests:** North/south hemisphere projection, `addInterpolatedValues()`, normalization
 
 #### 16. `ComputeStereographicProjection` - Stereographic projection utilities
 
 - **File:** `Source/EbsdLib/Utilities/ComputeStereographicProjection.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/StereographicProjectionTest.cpp` (6 test cases)
 - **Recommended tests:** Stereographic-to-spherical and spherical-to-stereographic round-trips
 
 #### 17. `TexturePreset` - Texture presets
 
 - **File:** `Source/EbsdLib/Texture/TexturePreset.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/TexturePresetTest.cpp` (5 test cases)
 - **Recommended tests:** Preset value getters, preset registration
 
 #### 18. `AngPhase` / `CtfPhase` / `EspritPhase` - Phase data classes
 
 - **Files:** `Source/EbsdLib/IO/TSL/AngPhase.h`, `Source/EbsdLib/IO/HKL/CtfPhase.h`, `Source/EbsdLib/IO/BrukerNano/EspritPhase.h`
-- **Status:** CtfPhase partially tested via CtfReaderTest; others untested
+- **Status:** **DONE** - `Source/Test/PhaseTest.cpp` (18 test cases)
 - **Recommended tests:** Construction, getter/setter verification, lattice constant parsing
 
 #### 19. LaueOps subclasses - Enhanced symmetry tests
 
 - **Files:** `Source/EbsdLib/LaueOps/*.h` (11 subclasses)
-- **Status:** FZ tests comprehensive; IPF generation and misorientation calculation only smoke-tested
+- **Status:** **DONE** - `Source/Test/LaueOpsTest.cpp` (11 test cases)
 - **Recommended tests:**
   - `getNumSymOps()` returns expected count for each crystal system
   - `getIPFColor()` with known orientations against reference values
@@ -259,13 +265,13 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 20. `ModifiedLambertProjection3D<T,K>` - 3D Lambert projection
 
 - **File:** `Source/EbsdLib/Utilities/ModifiedLambertProjection3D.hpp`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/ModifiedLambertProjection3DTest.cpp` (7 test cases)
 - **Recommended tests:** Cube-to-sphere and sphere-to-cube conversions, edge cases at cube boundaries
 
 #### 21. `OrientationTransformation` (namespace) - Conversion functions
 
 - **File:** `Source/EbsdLib/Core/OrientationTransformation.hpp`
-- **Status:** Well-tested via OrientationTest.cpp (round-trip), but not all individual functions are directly tested
+- **Status:** **DONE** - `Source/Test/OrientationTransformationTest.cpp` (11 test cases)
 - **Recommended tests:** Direct tests of each `xx2yy()` function with known analytical values (supplement existing round-trip tests)
 
 #### 22. `H5CtfReader` / `H5AngReader` - HDF5 format readers
@@ -281,37 +287,37 @@ These classes have zero or near-zero test coverage and contain non-trivial logic
 #### 23. `ToolTipGenerator` - HTML tooltip builder
 
 - **File:** `Source/EbsdLib/Utilities/ToolTipGenerator.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/ToolTipGeneratorTest.cpp` (8 test cases). Also fixed bug where `generateHTML()` and `rowToHTML()` returned empty strings.
 - **Recommended tests:** `addTitle()`, `addValue()`, output HTML correctness
 
 #### 24. `PoleFigureData` - Data holder
 
 - **File:** `Source/EbsdLib/Utilities/PoleFigureData.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/PoleFigureDataTest.cpp` (5 test cases)
 - **Recommended tests:** Construction, getter verification
 
 #### 25. `CanvasUtilities` - Visualization helpers
 
 - **File:** `Source/EbsdLib/Utilities/CanvasUtilities.hpp`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/CanvasUtilitiesTest.cpp` (6 test cases)
 - **Recommended tests:** Only if visual regression testing infrastructure is added
 
 #### 26. `ModifiedLambertProjectionArray` - Array variant
 
 - **File:** `Source/EbsdLib/Utilities/ModifiedLambertProjectionArray.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/ModifiedLambertProjectionArrayTest.cpp` (16 test cases)
 - **Recommended tests:** Array construction, element access, resize
 
 #### 27. `PoleFigureUtilities` - Pole figure generation
 
 - **File:** `Source/EbsdLib/Utilities/PoleFigureUtilities.h`
-- **Status:** No tests
+- **Status:** **DONE** - `Source/Test/PoleFigureUtilitiesTest.cpp` (4 test cases)
 - **Recommended tests:** Configuration setup, pole figure generation with known inputs
 
 #### 28. `TiffWriter` - TIFF file output
 
 - **File:** `Source/EbsdLib/Utilities/TiffWriter.h`
-- **Status:** Indirectly tested via IPFLegendTest (only checks return code)
+- **Status:** **DONE** - `Source/Test/TiffWriterTest.cpp` (4 test cases)
 - **Recommended tests:** Write and read-back verification, grayscale and color modes
 
 ---

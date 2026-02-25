@@ -5,6 +5,7 @@
 
 #include <Eigen/Dense>
 
+#include <array>
 #include <cassert>
 #include <cmath>
 
