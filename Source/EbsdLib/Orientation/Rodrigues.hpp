@@ -5,6 +5,7 @@
 #include "EbsdLib/Orientation/OrientationFwd.hpp"
 
 #include <array>
+#include <optional>
 
 namespace ebsdlib
 {
@@ -51,6 +52,16 @@ public:
     y() = y / length;
     z() = z / length;
     l() = length;
+  }
+
+  static std::optional<Rodrigues<T>> From3Component(T x, T y, T z)
+  {
+    const T length = sqrtf(x * x + y * y + z * z);
+    if(length == 0.0)
+    {
+      return {};
+    }
+    return Rodrigues<T>(x / length, y / length, z / length, length);
   }
 
   /**

@@ -576,3 +576,49 @@ TEST_CASE("ebsdlib::Orientations::StereographicConsistencyCheck", "[EbsdLib][Ori
   GENERATE_TEST_METHOD(Stereographic, Homochoric, Cubochoric, Stereographic);
   GENERATE_TEST_METHOD(Stereographic, Cubochoric, Homochoric, Stereographic);
 }
+
+TEST_CASE("ebsdlib::Orientations::RodriguesFrom3Component", "[EbsdLib][Orientations]")
+{
+  SECTION("Zero vector returns empty optional")
+  {
+    auto result = ebsdlib::RodriguesDType::From3Component(0.0, 0.0, 0.0);
+    REQUIRE_FALSE(result.has_value());
+  }
+
+  SECTION("Unit vector along X-axis produces valid Rodrigues")
+  {
+    auto result = ebsdlib::RodriguesDType::From3Component(1.0, 0.0, 0.0);
+    REQUIRE(result.has_value());
+    REQUIRE(result->x() == Approx(1.0));
+    REQUIRE(result->y() == Approx(0.0));
+    REQUIRE(result->z() == Approx(0.0));
+    REQUIRE(result->l() == Approx(1.0));
+    auto validity = result->isValid();
+    REQUIRE(validity.result == 1);
+  }
+
+  SECTION("Non-unit vector normalizes axis and stores computed length")
+  {
+    // From3Component normalizes x, y, z and sets l = ||(x,y,z)||
+    auto result = ebsdlib::RodriguesDType::From3Component(3.0, 4.0, 0.0);
+    REQUIRE(result.has_value());
+    REQUIRE(result->x() == Approx(0.6));
+    REQUIRE(result->y() == Approx(0.8));
+    REQUIRE(result->z() == Approx(0.0));
+    REQUIRE(result->l() == Approx(5.0));
+    auto validity = result->isValid();
+    REQUIRE(validity.result == 1);
+  }
+
+  SECTION("Negative component vector produces valid length")
+  {
+    auto result = ebsdlib::RodriguesDType::From3Component(0.0, -1.0, 0.0);
+    REQUIRE(result.has_value());
+    REQUIRE(result->x() == Approx(0.0));
+    REQUIRE(result->y() == Approx(-1.0));
+    REQUIRE(result->z() == Approx(0.0));
+    REQUIRE(result->l() == Approx(1.0));
+    auto validity = result->isValid();
+    REQUIRE(validity.result == 1);
+  }
+}
