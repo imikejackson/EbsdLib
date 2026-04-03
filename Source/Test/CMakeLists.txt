@@ -48,12 +48,37 @@ set(EbsdLib_UnitTest_SRCS
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/ModifiedLambertProjectionArrayTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/PoleFigureUtilitiesTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/TiffWriterTest.cpp
+
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/DirectionalStatsTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/UnitTestCommon.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/UnitTestCommon.hpp
 )
 
 
 set(DISABLED_TESTS
 
 )
+
+# -----------------------------------------------------------------------------
+# Here we are going to setup to download and decompress the test files. In order
+# to add your own test files you will need to tar.gz the test file, compute the
+# SHA 512 Hash of the file and then upload the file to
+# https://github.com/bluequartzsoftware/simplnx/releases/tag/Data_Archive.
+#
+# Go to the web site above, "edit" the release, add the filename and SHA 512 to
+# the table and then upload your compressed file.
+# Save the release so that the repo is updated
+# -----------------------------------------------------------------------------
+option(EBSDLIB_DOWNLOAD_TEST_FILES "Download the test files" ON)
+
+if(EBSDLIB_DOWNLOAD_TEST_FILES)
+  if(NOT EXISTS ${EBSDLIB_DATA_DIR}/TestFiles/)
+    file(MAKE_DIRECTORY "${EBSDLIB_DATA_DIR}/TestFiles/")
+  endif()
+
+  ebsdlib_download_test_data(EBSDLIB_DATA_DIR ${EBSDLIB_DATA_DIR} ARCHIVE_NAME Laue_Orientation_Clusters_v6.tar.gz SHA512 f327d3d2a86d539b3c1f3fc755d8f5741d8eb68aab45fc1ab54d9e5db48643903f9a37898366203e6eb2e7585ce57c6e186cca2107acb1a53318b813345cb10a)
+
+endif()
 
 
 #------------------------------------------------------------------------------
@@ -68,6 +93,8 @@ target_link_libraries(${UNIT_TEST_TARGET}
   PRIVATE
     EbsdLib
     Catch2::Catch2
+    ZLIB::ZLIB
+    fmt::fmt
 )
 
 target_include_directories(${UNIT_TEST_TARGET}
