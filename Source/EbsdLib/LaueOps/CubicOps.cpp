@@ -520,69 +520,75 @@ AxisAngleDType CubicOps::calculateMisorientationInternal(const std::vector<QuatD
       }
     }
   }
-  wmin = qco.w();
-  if(((qco.z() + qco.w()) / (ebsdlib::constants::k_Sqrt2D)) > wmin)
+  // Three candidate symmetry-op reductions of qco. For each "type" (sym op class),
+  // compute BOTH the candidate cos(half-angle) AND the vector components (vx,vy,vz)
+  // of the reduced quaternion explicitly. Choosing the largest cos(half-angle)
+  // picks the sym op that minimizes the misorientation angle.
+  //
+  // The angle is then 2 * atan2(|v|, w) using the EXPLICIT v from the reduced
+  // quaternion -- rather than sqrt(1 - w*w) -- which preserves precision through
+  // symmetry-op cancellations. When qco encodes a sym op exactly, the v components
+  // collapse to subtractions of identical floats (e.g., (qco.z - qco.w) when
+  // qco.z == qco.w), which yield exactly 0 in IEEE 754. The sqrt(1 - w*w) form
+  // loses this precision because w is computed via sums/divisions that do not
+  // preserve the ULP structure of the inputs -- a real concern when AvgQuats
+  // is stored as float32 and promoted to double inside the calculation.
+
+  // Type 1: identity (no sym op applied) -- reduced quaternion is qco itself
+  double wCand = qco.w();
+  double vx = qco.x();
+  double vy = qco.y();
+  double vz = qco.z();
+  type = 1;
+
+  // Type 2: 90 deg about z; sym op (0, 0, 1, 1) / sqrt(2)
   {
-    wmin = ((qco.z() + qco.w()) / (ebsdlib::constants::k_Sqrt2D));
-    type = 2;
-  }
-  if(((qco.x() + qco.y() + qco.z() + qco.w()) / 2) > wmin)
-  {
-    wmin = ((qco.x() + qco.y() + qco.z() + qco.w()) / 2);
-    type = 3;
-  }
-  if(wmin < -1.0)
-  {
-    //  wmin = -1.0;
-    wmin = ebsdlib::constants::k_ACosNeg1D;
-    sin_wmin_over_2 = std::sin(wmin);
-  }
-  else if(wmin > 1.0)
-  {
-    //   wmin = 1.0;
-    wmin = ebsdlib::constants::k_ACos1D;
-    sin_wmin_over_2 = std::sin(wmin);
-  }
-  else
-  {
-    wmin = acos(wmin);
-    sin_wmin_over_2 = std::sin(wmin);
+    const double w2 = (qco.z() + qco.w()) / ebsdlib::constants::k_Sqrt2D;
+    if(w2 > wCand)
+    {
+      wCand = w2;
+      vx = (qco.x() - qco.y()) / ebsdlib::constants::k_Sqrt2D;
+      vy = (qco.x() + qco.y()) / ebsdlib::constants::k_Sqrt2D;
+      vz = (qco.z() - qco.w()) / ebsdlib::constants::k_Sqrt2D;
+      type = 2;
+    }
   }
 
+  // Type 3: 120 deg about [1, 1, 1]; sym op (1, 1, 1, 1) / 2
+  {
+    const double w3 = (qco.x() + qco.y() + qco.z() + qco.w()) / 2.0;
+    if(w3 > wCand)
+    {
+      wCand = w3;
+      vx = (qco.x() - qco.y() + qco.z() - qco.w()) / 2.0;
+      vy = (qco.x() + qco.y() - qco.z() - qco.w()) / 2.0;
+      vz = (-qco.x() + qco.y() + qco.z() - qco.w()) / 2.0;
+      type = 3;
+    }
+  }
+
+  // Stable angle: 2 * atan2(|v|, w). Clamp w only to defend against ULP excess
+  // above 1.0 from float roundoff (this does NOT affect the precision-recovery
+  // path -- precision is recovered by computing |v| from the explicit v terms).
+  sin_wmin_over_2 = std::sqrt(vx * vx + vy * vy + vz * vz);
+  const double clampedW = std::clamp(wCand, -1.0, 1.0);
+  wmin = 2.0 * std::atan2(sin_wmin_over_2, clampedW);
+
+  // Axis = v / |v|. When |v| == 0 the reduced quaternion is identity (angle 0,
+  // axis undefined); use [0, 0, 1] by convention.
   double n1 = 0.0;
   double n2 = 0.0;
   double n3 = 0.0;
-  if(type == 1)
+  if(sin_wmin_over_2 > 0.0)
   {
-    n1 = qco.x() / sin_wmin_over_2;
-    n2 = qco.y() / sin_wmin_over_2;
-    n3 = qco.z() / sin_wmin_over_2;
+    n1 = vx / sin_wmin_over_2;
+    n2 = vy / sin_wmin_over_2;
+    n3 = vz / sin_wmin_over_2;
   }
-  if(type == 2)
+  else
   {
-    n1 = ((qco.x() - qco.y()) / (ebsdlib::constants::k_Sqrt2D)) / sin_wmin_over_2;
-    n2 = ((qco.x() + qco.y()) / (ebsdlib::constants::k_Sqrt2D)) / sin_wmin_over_2;
-    n3 = ((qco.z() - qco.w()) / (ebsdlib::constants::k_Sqrt2D)) / sin_wmin_over_2;
+    n3 = 1.0;
   }
-  if(type == 3)
-  {
-    n1 = ((qco.x() - qco.y() + qco.z() - qco.w()) / (2.0)) / sin_wmin_over_2;
-    n2 = ((qco.x() + qco.y() - qco.z() - qco.w()) / (2.0)) / sin_wmin_over_2;
-    n3 = ((-qco.x() + qco.y() + qco.z() - qco.w()) / (2.0)) / sin_wmin_over_2;
-  }
-  double denom = sqrt((n1 * n1 + n2 * n2 + n3 * n3));
-  n1 = n1 / denom;
-  n2 = n2 / denom;
-  n3 = n3 / denom;
-  if(denom == 0)
-  {
-    n1 = 0.0, n2 = 0.0, n3 = 1.0;
-  }
-  if(wmin == 0)
-  {
-    n1 = 0.0, n2 = 0.0, n3 = 1.0;
-  }
-  wmin = 2.0f * wmin;
 
   AxisAngleDType axisAngle(n1, n2, n3, wmin);
   return axisAngle;
