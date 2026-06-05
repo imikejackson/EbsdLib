@@ -46,7 +46,12 @@
 #include "EbsdLib/Utilities/ComputeStereographicProjection.h"
 #include "EbsdLib/Utilities/EbsdStringUtils.hpp"
 #include "EbsdLib/Utilities/Fonts.hpp"
+#include "EbsdLib/Utilities/FundamentalSectorGeometry.hpp"
+#include "EbsdLib/Utilities/GriddedColorKey.hpp"
 #include "EbsdLib/Utilities/ModifiedLambertProjection.h"
+#include "EbsdLib/Utilities/NolzeHielscherColorKey.hpp"
+#include "EbsdLib/Utilities/PUCMColorKey.hpp"
+#include "EbsdLib/Utilities/TSLColorKey.hpp"
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
@@ -55,10 +60,30 @@
 #endif
 using namespace ebsdlib;
 
+namespace
+{
+ebsdlib::IColorKey::Pointer keyForKind(ebsdlib::ColorKeyKind kind)
+{
+  static const auto k_TSL = std::make_shared<ebsdlib::TSLColorKey>();
+  static const auto k_PUCM = std::make_shared<ebsdlib::PUCMColorKey>("23");
+  static const auto k_NH = std::make_shared<ebsdlib::NolzeHielscherColorKey>(ebsdlib::FundamentalSectorGeometry::cubicLow());
+  switch(kind)
+  {
+  case ebsdlib::ColorKeyKind::PUCM:
+    return k_PUCM;
+  case ebsdlib::ColorKeyKind::NolzeHielscher:
+    return k_NH;
+  case ebsdlib::ColorKeyKind::TSL:
+    break;
+  }
+  return k_TSL;
+}
+} // namespace
+
 namespace CubicLow
 {
 
-constexpr std::array<size_t, 3> k_OdfNumBins = {36, 36, 36}; // Represents a 5Deg bin
+constexpr std::array<size_t, 3> k_OdfNumBins = {36, 36, 36}; // Represents a 5Deg bin in homochoric space
 static const std::array<double, 3> k_OdfDimInitValue = {std::pow((0.75 * (ebsdlib::constants::k_PiOver2D - std::sin(ebsdlib::constants::k_PiOver2D))), (1.0 / 3.0)),
                                                         std::pow((0.75 * (ebsdlib::constants::k_PiOver2D - std::sin(ebsdlib::constants::k_PiOver2D))), (1.0 / 3.0)),
                                                         std::pow((0.75 * (ebsdlib::constants::k_PiOver2D - std::sin(ebsdlib::constants::k_PiOver2D))), (1.0 / 3.0))};
@@ -554,14 +579,12 @@ public:
 
   void generate(size_t start, size_t end) const
   {
-    ebsdlib::Matrix3X3D gTranspose;
     ebsdlib::Matrix3X1D direction(0.0, 0.0, 0.0);
 
     for(size_t i = start; i < end; ++i)
     {
-      ebsdlib::Matrix3X3D g(EulerDType(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2)).toOrientationMatrix().data());
-
-      gTranspose = g.transpose();
+      EulerDType euler(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2));
+      ebsdlib::Matrix3X3D gTranspose = euler.toOrientationMatrix().toGMatrix().transpose();
 
       // -----------------------------------------------------------------------------
       // 001 Family
@@ -611,7 +634,7 @@ public:
                      m_xyz011->getPointer(i * 36 + 15),          // write to the next triplet in memory
                      [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
       direction[0] = -ebsdlib::constants::k_1OverRoot2D;
-      direction[1] = -ebsdlib::constants::k_1OverRoot2D;
+      direction[1] = ebsdlib::constants::k_1OverRoot2D;
       direction[2] = 0.0;
       (gTranspose * direction).copyInto<float>(m_xyz011->getPointer(i * 36 + 18));
       std::transform(m_xyz011->getPointer(i * 36 + 18), m_xyz011->getPointer(i * 36 + 21),
@@ -675,7 +698,8 @@ public:
 } // namespace CubicLow
 
 // -----------------------------------------------------------------------------
-void CubicLowOps::generateSphereCoordsFromEulers(ebsdlib::FloatArrayType* eulers, ebsdlib::FloatArrayType* xyz001, ebsdlib::FloatArrayType* xyz011, ebsdlib::FloatArrayType* xyz111) const
+void CubicLowOps::generateSphereCoordsFromEulers(ebsdlib::FloatArrayType* eulers, ebsdlib::FloatArrayType* xyz001, ebsdlib::FloatArrayType* xyz011, ebsdlib::FloatArrayType* xyz111,
+                                                 ebsdlib::HexConvention conv) const
 {
   size_t nOrientations = eulers->getNumberOfTuples();
 
@@ -744,17 +768,17 @@ bool CubicLowOps::inUnitTriangle(double eta, double chi) const
 }
 
 // -----------------------------------------------------------------------------
-ebsdlib::Rgb CubicLowOps::generateIPFColor(double* eulers, double* refDir, bool degToRad) const
+ebsdlib::Rgb CubicLowOps::generateIPFColor(double* eulers, double* refDir, bool degToRad, ebsdlib::ColorKeyKind kind) const
 {
-  return computeIPFColor(eulers, refDir, degToRad);
+  return computeIPFColor(eulers, refDir, degToRad, keyForKind(kind).get());
 }
 
 // -----------------------------------------------------------------------------
-ebsdlib::Rgb CubicLowOps::generateIPFColor(double phi1, double phi, double phi2, double refDir0, double refDir1, double refDir2, bool degToRad) const
+ebsdlib::Rgb CubicLowOps::generateIPFColor(double phi1, double phi, double phi2, double refDir0, double refDir1, double refDir2, bool degToRad, ebsdlib::ColorKeyKind kind) const
 {
   double eulers[3] = {phi1, phi, phi2};
   double refDir[3] = {refDir0, refDir1, refDir2};
-  return computeIPFColor(eulers, refDir, degToRad);
+  return computeIPFColor(eulers, refDir, degToRad, keyForKind(kind).get());
 }
 
 // -----------------------------------------------------------------------------
@@ -779,7 +803,7 @@ ebsdlib::Rgb CubicLowOps::generateRodriguesColor(double r1, double r2, double r3
 }
 
 // -----------------------------------------------------------------------------
-std::array<std::string, 3> CubicLowOps::getDefaultPoleFigureNames() const
+std::array<std::string, 3> CubicLowOps::getDefaultPoleFigureNames(ebsdlib::HexConvention conv) const
 {
   return {"<001>", "<011>", "<111>"};
 }
@@ -941,7 +965,7 @@ std::vector<ebsdlib::UInt8ArrayType::Pointer> CubicLowOps::generatePoleFigure(Po
 
 namespace
 {
-ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const CubicLowOps* ops, int imageDim, bool generateEntirePlane)
+ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const CubicLowOps* ops, int imageDim, bool generateEntirePlane, const ebsdlib::IColorKey* key)
 {
   std::vector<size_t> dims(1, 4);
   std::string arrayName = EbsdStringUtils::replace(ops->getSymmetryName(), "/", "_");
@@ -979,7 +1003,8 @@ ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const CubicLowOps* ops, int ima
       }
       else if((sphericalCoords[2] > sphericalCoords[0] && sphericalCoords[2] > sphericalCoords[1]) || generateEntirePlane)
       {
-        color = ops->generateIPFColor(0.0, 0.0, 0.0, sphericalCoords[0], sphericalCoords[1], sphericalCoords[2], false);
+        double zeros[3] = {0.0, 0.0, 0.0};
+        color = ops->computeIPFColor(zeros, sphericalCoords.data(), false, key);
       }
       pixelPtr[idx] = color;
     }
@@ -989,9 +1014,62 @@ ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const CubicLowOps* ops, int ima
 }
 
 // -----------------------------------------------------------------------------
-void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float fontPtSize, std::vector<float> margins, std::array<float, 2> figureOrigin, std::array<float, 2> figureCenter,
-                               bool drawFullCircle)
+} // namespace
+
+// -----------------------------------------------------------------------------
+bool CubicLowOps::mapPixelToSphereSST(int xPixel, int yPixel, int imageDim, std::array<float, 3>& sphereDir) const
 {
+  double xInc = 1.0 / static_cast<double>(imageDim);
+  double yInc = 1.0 / static_cast<double>(imageDim);
+
+  double x = 0.5 * static_cast<double>(xPixel) * xInc;
+  double y = 0.5 * static_cast<double>(yPixel) * yInc;
+
+  double sumSquares = (x * x) + (y * y);
+  if(sumSquares > 1.0)
+  {
+    return false;
+  }
+
+  auto sc = stereographic::utils::StereoToSpherical(x, y).normalize();
+
+  if(!(sc[2] > sc[0] && sc[2] > sc[1]))
+  {
+    return false;
+  }
+
+  sphereDir[0] = static_cast<float>(sc[0]);
+  sphereDir[1] = static_cast<float>(sc[1]);
+  sphereDir[2] = static_cast<float>(sc[2]);
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+std::array<float, 2> CubicLowOps::adjustFigureOrigin(std::array<float, 2> figureOrigin, int legendWidth, int legendHeight, const std::vector<float>& margins, float fontPtSize,
+                                                     bool generateEntirePlane) const
+{
+  if(!generateEntirePlane)
+  {
+    figureOrigin[1] = fontPtSize * 2.0F;
+  }
+  return figureOrigin;
+}
+
+// -----------------------------------------------------------------------------
+void CubicLowOps::drawIPFAnnotations(canvas_ity::canvas& context, int canvasDim, float fontPtSize, const std::vector<float>& margins, std::array<float, 2> figureOrigin,
+                                     std::array<float, 2> figureCenter, bool drawFullCircle, ebsdlib::HexConvention conv) const
+{
+  if(!drawFullCircle)
+  {
+    int legendHeight = canvasDim - static_cast<int>(margins[0]) - static_cast<int>(margins[2]);
+    int legendWidth = canvasDim - static_cast<int>(margins[1]) - static_cast<int>(margins[3]);
+    if(legendHeight > legendWidth)
+    {
+      legendHeight = legendWidth;
+    }
+    figureCenter = {figureOrigin[0], figureOrigin[1] + static_cast<float>(legendHeight)};
+  }
+
   int legendHeight = canvasDim - static_cast<int>(margins[0]) - static_cast<int>(margins[2]);
   int legendWidth = canvasDim - static_cast<int>(margins[1]) - static_cast<int>(margins[3]);
 
@@ -1119,21 +1197,14 @@ void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float
   }
 }
 
-} // namespace
-
 // -----------------------------------------------------------------------------
-ebsdlib::UInt8ArrayType::Pointer CubicLowOps::generateIPFTriangleLegend(int canvasDim, bool generateEntirePlane) const
+ebsdlib::UInt8ArrayType::Pointer CubicLowOps::generateIPFTriangleLegend(int canvasDim, bool generateEntirePlane, ebsdlib::HexConvention conv, ebsdlib::ColorKeyKind kind, bool gridded) const
 {
-  // Figure out the Legend Pixel Size
+  // Compute legend dimensions (same formula as annotateIPFImage uses)
   const float fontPtSize = static_cast<float>(canvasDim) / 24.0f;
-  const std::vector<float> margins = {fontPtSize * 3,                        // Top
-                                      static_cast<float>(canvasDim) / 7.0F,  // Right
-                                      fontPtSize * 2,                        // Bottom
-                                      static_cast<float>(canvasDim) / 7.0F}; // Left
-
+  const std::vector<float> margins = {fontPtSize * 3, static_cast<float>(canvasDim / 7.0f), fontPtSize * 2, static_cast<float>(canvasDim / 7.0f)};
   int legendHeight = canvasDim - static_cast<int>(margins[0]) - static_cast<int>(margins[2]);
   int legendWidth = canvasDim - static_cast<int>(margins[1]) - static_cast<int>(margins[3]);
-
   if(legendHeight > legendWidth)
   {
     legendHeight = legendWidth;
@@ -1142,77 +1213,17 @@ ebsdlib::UInt8ArrayType::Pointer CubicLowOps::generateIPFTriangleLegend(int canv
   {
     legendWidth = legendHeight;
   }
-  int pageHeight = canvasDim;
-  int pageWidth = canvasDim;
-  int halfWidth = legendWidth / 2;
-  int halfHeight = legendHeight / 2;
 
-  std::array<float, 2> figureOrigin = {margins[3], margins[0] * 1.33F};
-  if(!generateEntirePlane)
+  // Generate the colored SST triangle image (ARGB)
+  ebsdlib::IColorKey::Pointer key = keyForKind(kind);
+  if(gridded)
   {
-    // figureOrigin[0] =  margins[3] * 2.0F;
-    figureOrigin[1] = 0.0F + fontPtSize * 2.0F;
+    key = std::make_shared<ebsdlib::GriddedColorKey>(key, 1.0);
   }
-  std::array<float, 2> figureCenter = {figureOrigin[0] + static_cast<float>(halfWidth), figureOrigin[1] + static_cast<float>(halfHeight)};
+  ebsdlib::UInt8ArrayType::Pointer image = CreateIPFLegend(this, legendHeight, generateEntirePlane, key.get());
 
-  // Create the actual Legend which will come back as ARGB values
-  ebsdlib::UInt8ArrayType::Pointer image = CreateIPFLegend(this, legendHeight, generateEntirePlane);
-
-  // Convert from ARGB to RGBA which is what canvas_itk wants
-  image = ebsdlib::ConvertColorOrder(image.get(), legendHeight);
-
-  // We need to mirror across the X Axis because the image was drawn with +Y pointing down
-  image = ebsdlib::MirrorImage(image.get(), legendHeight);
-
-  // Create a 2D Canvas to draw into now that the Legend is in the proper form
-  canvas_ity::canvas context(pageWidth, pageHeight);
-
-  std::vector<unsigned char> latoBold = ebsdlib::fonts::GetLatoBold();
-  std::vector<unsigned char> latoRegular = ebsdlib::fonts::GetLatoRegular();
-  context.set_font(latoBold.data(), static_cast<int>(latoBold.size()), fontPtSize);
-  context.set_color(canvas_ity::fill_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  canvas_ity::baseline_style const baselines[] = {canvas_ity::alphabetic, canvas_ity::top, canvas_ity::middle, canvas_ity::bottom, canvas_ity::hanging, canvas_ity::ideographic};
-  context.text_baseline = baselines[0];
-
-  // Fill the whole background with white
-  context.move_to(0.0f, 0.0f);
-  context.line_to(static_cast<float>(pageWidth), 0.0f);
-  context.line_to(static_cast<float>(pageWidth), static_cast<float>(pageHeight));
-  context.line_to(0.0f, static_cast<float>(pageHeight));
-  context.line_to(0.0f, 0.0f);
-  context.close_path();
-  context.set_color(canvas_ity::fill_style, 1.0f, 1.0f, 1.0f, 1.0f);
-  context.fill();
-
-  // Draw the legend image onto the canvas at the correct spot.
-  context.draw_image(image->getPointer(0), legendWidth, legendHeight, legendWidth * image->getNumberOfComponents(), figureOrigin[0], figureOrigin[1], static_cast<float>(legendWidth),
-                     static_cast<float>(legendHeight));
-
-  // Draw Title of Legend
-  context.set_font(latoBold.data(), static_cast<int>(latoBold.size()), fontPtSize * 1.5F);
-  ebsdlib::WriteText(context, getSymmetryName(), {margins[0], static_cast<float>(fontPtSize * 1.5)}, fontPtSize * 1.5F);
-
-  if(generateEntirePlane)
-  {
-    context.set_font(latoRegular.data(), static_cast<int>(latoRegular.size()), fontPtSize);
-    DrawFullCircleAnnotations(context, canvasDim, fontPtSize, margins, figureOrigin, figureCenter, true);
-  }
-  else
-  {
-    figureCenter = {figureOrigin[0], figureOrigin[1] + static_cast<float>(legendHeight)};
-    context.set_font(latoRegular.data(), static_cast<int>(latoRegular.size()), fontPtSize);
-    DrawFullCircleAnnotations(context, canvasDim, fontPtSize, margins, figureOrigin, figureCenter, false);
-  }
-
-  // Fetch the rendered RGBA pixels from the entire canvas.
-  ebsdlib::UInt8ArrayType::Pointer rgbaCanvasImage = ebsdlib::UInt8ArrayType::CreateArray(pageHeight * pageWidth, {4ULL}, "Triangle Legend", true);
-  // std::vector<unsigned char> rgbaCanvasImage(static_cast<size_t>(pageHeight * pageWidth * 4));
-  context.get_image_data(rgbaCanvasImage->getPointer(0), pageWidth, pageHeight, pageWidth * 4, 0, 0);
-
-  // Remove the Alpha channel from the final image
-  rgbaCanvasImage = ebsdlib::RemoveAlphaChannel(rgbaCanvasImage.get());
-
-  return rgbaCanvasImage;
+  // Annotate with title and Miller index labels
+  return annotateIPFImage(image, legendHeight, canvasDim, getSymmetryName(), generateEntirePlane, /*hasColorBar=*/false, ebsdlib::HexConvention::NotApplicable);
 }
 
 // -----------------------------------------------------------------------------

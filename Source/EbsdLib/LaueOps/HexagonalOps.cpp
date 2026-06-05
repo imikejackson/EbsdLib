@@ -48,7 +48,12 @@
 #include "EbsdLib/Utilities/ComputeStereographicProjection.h"
 #include "EbsdLib/Utilities/EbsdStringUtils.hpp"
 #include "EbsdLib/Utilities/Fonts.hpp"
+#include "EbsdLib/Utilities/FundamentalSectorGeometry.hpp"
+#include "EbsdLib/Utilities/GriddedColorKey.hpp"
+#include "EbsdLib/Utilities/NolzeHielscherColorKey.hpp"
+#include "EbsdLib/Utilities/PUCMColorKey.hpp"
 #include "EbsdLib/Utilities/PoleFigureUtilities.h"
+#include "EbsdLib/Utilities/TSLColorKey.hpp"
 
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
@@ -57,9 +62,29 @@
 #endif
 using namespace ebsdlib;
 
+namespace
+{
+ebsdlib::IColorKey::Pointer keyForKind(ebsdlib::ColorKeyKind kind)
+{
+  static const auto k_TSL = std::make_shared<ebsdlib::TSLColorKey>();
+  static const auto k_PUCM = std::make_shared<ebsdlib::PUCMColorKey>("622");
+  static const auto k_NH = std::make_shared<ebsdlib::NolzeHielscherColorKey>(ebsdlib::FundamentalSectorGeometry::hexagonalHigh());
+  switch(kind)
+  {
+  case ebsdlib::ColorKeyKind::PUCM:
+    return k_PUCM;
+  case ebsdlib::ColorKeyKind::NolzeHielscher:
+    return k_NH;
+  case ebsdlib::ColorKeyKind::TSL:
+    break;
+  }
+  return k_TSL;
+}
+} // namespace
+
 namespace HexagonalHigh
 {
-constexpr std::array<size_t, 3> k_OdfNumBins = {36, 36, 12}; // Represents a 5Deg bin
+constexpr std::array<size_t, 3> k_OdfNumBins = {36, 36, 12}; // Represents a 5Deg bin in homochoric space
 
 static const std::array<double, 3> k_OdfDimInitValue = {std::pow((0.75 * (((ebsdlib::constants::k_PiOver2D)) - std::sin(((ebsdlib::constants::k_PiOver2D))))), (1.0 / 3.0)),
                                                         std::pow((0.75 * (((ebsdlib::constants::k_PiOver2D)) - std::sin(((ebsdlib::constants::k_PiOver2D))))), (1.0 / 3.0)),
@@ -168,6 +193,121 @@ static const std::vector<Matrix3X3D> k_MatSym = {
 constexpr double k_EtaMin = 0.0;
 constexpr double k_EtaMax = 30.0;
 constexpr double k_ChiMax = 90.0;
+
+// ---------------------------------------------------------------------------
+// SymOps: convention-aware bundle of symmetry operations.
+//
+// CANONICAL = X||a*. The hand-typed k_QuatSym, k_RodSym, k_MatSym arrays
+// above hold the hex 6/mmm symmetry rotations expressed in the X||a*
+// (MTEX / Oxford) basis -- the v3 internal default. These values are the
+// MTEX-validated source of truth (see the 1752-bucket regression at
+// Data/Pole_Figure_Validation/).
+//
+// For the X||a (TSL/EDAX/legacy DREAM3D) convention, the SAME twelve
+// physical rotations are expressed in a basis rotated by 30° about the
+// c-axis, which in quaternion form is a similarity transform:
+//
+//     S_X||a = q_30 * S_X||a* * conj(q_30)        where q_30 = R_z(+30°)
+//
+// The X||a side is therefore *derived by construction* from the validated
+// X||a* canonical, with the per-direction-table entries similarly rotated
+// by R_z(+30°). Two static instances of SymOps live below (one per
+// convention) so any caller that has selected a convention can read sym
+// ops directly via a pointer flip rather than computing the conjugation
+// per-call.
+//
+// Note on sym op ordering: the order of entries in k_QuatSym (and the per-
+// family direction lists below) originates from the EMsoftOO project,
+// hand-derived for loop efficiency in EMsoftOO's inner loops. There is no
+// expected mathematical relationship between consecutive entries -- two
+// hand-typed tables encoding the same orbit can legitimately disagree by
+// index. Validation is therefore by *orbit equality*, not table equality.
+//
+// See Code_Review/v3_phase0_design_notes.md §16 for the canonical-direction
+// reasoning and the v2 → v3 enumeration-mismatch finding that informed it.
+// ---------------------------------------------------------------------------
+struct SymOps
+{
+  std::vector<QuatD> quat;
+  std::vector<RodriguesDType> rod;
+  std::vector<Matrix3X3D> mat;
+
+  // Plane-family direction tables for generateSphereCoordsFromEulers, one
+  // unique direction per slot (the antipodes are written by the rendering
+  // loop). Sizes match k_SymSize0 / 2, k_SymSize1 / 2, k_SymSize2 / 2.
+  //
+  // Under X||a*, family-1's first member at (1, 0, 0) is the {10-10}
+  // plane normal a*1, and family-2's first member at (cos30, sin30, 0)
+  // is the {2-1-10} direction. Under X||a, those Cartesian numbers
+  // change because the basis rotates 30° about c.
+  std::vector<ebsdlib::Matrix3X1D> dirsFamily0; // {0001} family
+  std::vector<ebsdlib::Matrix3X1D> dirsFamily1; // {10-10} family
+  std::vector<ebsdlib::Matrix3X1D> dirsFamily2; // {2-1-10} family
+
+  template <ebsdlib::HexConvention Conv>
+  static SymOps build()
+  {
+    // Canonical (X||a*) plane-family direction sets. Each entry is one
+    // unique direction; antipodes are emitted by the rendering loop.
+    const std::vector<ebsdlib::Matrix3X1D> canonicalDirsFamily0 = {{0.0, 0.0, 1.0}};
+    const std::vector<ebsdlib::Matrix3X1D> canonicalDirsFamily1 = {{1.0, 0.0, 0.0}, {0.5, ebsdlib::constants::k_Root3Over2D, 0.0}, {-0.5, ebsdlib::constants::k_Root3Over2D, 0.0}};
+    const std::vector<ebsdlib::Matrix3X1D> canonicalDirsFamily2 = {{ebsdlib::constants::k_Root3Over2D, 0.5, 0.0}, {0.0, 1.0, 0.0}, {-ebsdlib::constants::k_Root3Over2D, 0.5, 0.0}};
+
+    if constexpr(Conv == ebsdlib::HexConvention::XParallelAStar)
+    {
+      // Trivial copy of the canonical (v3) tables.
+      return SymOps{k_QuatSym, k_RodSym, k_MatSym, canonicalDirsFamily0, canonicalDirsFamily1, canonicalDirsFamily2};
+    }
+    else // XParallelA -- derive by 30°-about-c similarity transform.
+    {
+      // q_30 = quaternion of R_z(+30°). EbsdLib QuatD layout is (x, y, z, w).
+      const double sin15 = std::sin(15.0 * ebsdlib::constants::k_PiOver180D);
+      const double cos15 = std::cos(15.0 * ebsdlib::constants::k_PiOver180D);
+      const QuatD q30(0.0, 0.0, sin15, cos15);
+      const QuatD q30Inv = q30.conjugate();
+
+      // R_z(+30°) as a 3x3 matrix for rotating the cartesian direction tables.
+      const double c30 = ebsdlib::constants::k_Root3Over2D; // cos(30°)
+      const double s30 = 0.5;                               // sin(30°)
+      const ebsdlib::Matrix3X3D rz30(c30, -s30, 0.0, s30, c30, 0.0, 0.0, 0.0, 1.0);
+
+      SymOps out;
+      out.quat.reserve(k_QuatSym.size());
+      out.rod.reserve(k_QuatSym.size());
+      out.mat.reserve(k_QuatSym.size());
+      for(const auto& qStar : k_QuatSym)
+      {
+        const QuatD qA = q30 * qStar * q30Inv;
+        out.quat.push_back(qA);
+        // Derive matrix and Rodrigues forms from the conjugated quaternion
+        // so all three representations stay self-consistent.
+        out.mat.push_back(qA.toOrientationMatrix().toGMatrix());
+        out.rod.push_back(qA.toRodrigues());
+      }
+
+      // Direction tables: rotate each entry by R_z(+30°) to land in X||a basis.
+      // c-axis is invariant; basal-plane vectors rotate.
+      out.dirsFamily0 = canonicalDirsFamily0; // c-axis: same in both bases
+      out.dirsFamily1.reserve(canonicalDirsFamily1.size());
+      out.dirsFamily2.reserve(canonicalDirsFamily2.size());
+      for(const auto& d : canonicalDirsFamily1)
+      {
+        out.dirsFamily1.push_back(rz30 * d);
+      }
+      for(const auto& d : canonicalDirsFamily2)
+      {
+        out.dirsFamily2.push_back(rz30 * d);
+      }
+      return out;
+    }
+  }
+};
+
+// Two static instances. Built once at TU static-init. Order is well-defined
+// because they sit BELOW k_QuatSym / k_RodSym / k_MatSym in the same TU.
+static const SymOps k_SymOps_XParallelAStar = SymOps::build<ebsdlib::HexConvention::XParallelAStar>();
+static const SymOps k_SymOps_XParallelA = SymOps::build<ebsdlib::HexConvention::XParallelA>();
+
 // Use a namespace for some detail that only this class needs
 } // namespace HexagonalHigh
 
@@ -1089,86 +1229,59 @@ class GenerateSphereCoordsImpl
   ebsdlib::FloatArrayType* m_xyz001;
   ebsdlib::FloatArrayType* m_xyz011;
   ebsdlib::FloatArrayType* m_xyz111;
+  const SymOps* m_Sym;
 
 public:
-  GenerateSphereCoordsImpl(ebsdlib::FloatArrayType* eulerAngles, ebsdlib::FloatArrayType* xyz0001Coords, ebsdlib::FloatArrayType* xyz1010Coords, ebsdlib::FloatArrayType* xyz1120Coords)
+  GenerateSphereCoordsImpl(ebsdlib::FloatArrayType* eulerAngles, ebsdlib::FloatArrayType* xyz0001Coords, ebsdlib::FloatArrayType* xyz1010Coords, ebsdlib::FloatArrayType* xyz1120Coords,
+                           const SymOps* sym)
   : m_Eulers(eulerAngles)
   , m_xyz001(xyz0001Coords)
   , m_xyz011(xyz1010Coords)
   , m_xyz111(xyz1120Coords)
+  , m_Sym(sym)
   {
   }
   virtual ~GenerateSphereCoordsImpl() = default;
 
+  // Project one direction at slot `s` of a family into the destination array
+  // and write its antipode in the next slot. `slot` is the unique-direction
+  // index (0, 1, ..., N-1); `slot * 2` is the byte offset in the destination
+  // measured in 3-tuples (each direction emits one + and one - = 2 tuples).
+  static inline void emitDirAndAntipode(const ebsdlib::Matrix3X3D& gTranspose, const ebsdlib::Matrix3X1D& dir, ebsdlib::FloatArrayType* dest, size_t pairOffsetTuples)
+  {
+    const size_t plus = pairOffsetTuples * 3;
+    const size_t minus = plus + 3;
+    (gTranspose * dir).copyInto<float>(dest->getPointer(plus));
+    std::transform(dest->getPointer(plus), dest->getPointer(plus + 3), dest->getPointer(minus), [](float v) { return v * -1.0F; });
+  }
+
   void generate(size_t start, size_t end) const
   {
-    ebsdlib::Matrix3X3D gTranspose;
-    ebsdlib::Matrix3X1D direction(0.0, 0.0, 0.0);
+    const size_t f0Stride = m_Sym->dirsFamily0.size() * 2; // tuples per orientation
+    const size_t f1Stride = m_Sym->dirsFamily1.size() * 2;
+    const size_t f2Stride = m_Sym->dirsFamily2.size() * 2;
 
     // Generate all the Coordinates
     for(size_t i = start; i < end; ++i)
     {
-      ebsdlib::Matrix3X3D g(EulerDType(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2)).toOrientationMatrix().data());
+      EulerDType euler(m_Eulers->getValue(i * 3), m_Eulers->getValue(i * 3 + 1), m_Eulers->getValue(i * 3 + 2));
+      ebsdlib::Matrix3X3D gTranspose = euler.toOrientationMatrix().toGMatrix().transpose();
 
-      gTranspose = g.transpose();
-
-      // -----------------------------------------------------------------------------
-      // 0001 Family
-      direction[0] = 0.0;
-      direction[1] = 0.0;
-      direction[2] = 1.0;
-      (gTranspose * direction).copyInto<float>(m_xyz001->getPointer(i * 6));
-      std::transform(m_xyz001->getPointer(i * 6), m_xyz001->getPointer(i * 6 + 3),
-                     m_xyz001->getPointer(i * 6 + 3),            // write to the next triplet in memory
-                     [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
-
-      // -----------------------------------------------------------------------------
-      // [10-10], also [210]
-      direction[0] = ebsdlib::constants::k_Root3Over2D;
-      direction[1] = 0.5;
-      direction[2] = 0.0;
-      (gTranspose * direction).copyInto<float>(m_xyz011->getPointer(i * 18));
-      std::transform(m_xyz011->getPointer(i * 18), m_xyz011->getPointer(i * 18 + 3),
-                     m_xyz011->getPointer(i * 18 + 3),           // write to the next triplet in memory
-                     [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
-      direction[0] = 0.0;
-      direction[1] = 1.0;
-      direction[2] = 0.0;
-      (gTranspose * direction).copyInto<float>(m_xyz011->getPointer(i * 18 + 6));
-      std::transform(m_xyz011->getPointer(i * 18 + 6), m_xyz011->getPointer(i * 18 + 9),
-                     m_xyz011->getPointer(i * 18 + 9),           // write to the next triplet in memory
-                     [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
-      direction[0] = -ebsdlib::constants::k_Root3Over2D;
-      direction[1] = 0.5;
-      direction[2] = 0.0;
-      (gTranspose * direction).copyInto<float>(m_xyz011->getPointer(i * 18 + 12));
-      std::transform(m_xyz011->getPointer(i * 18 + 12), m_xyz011->getPointer(i * 18 + 15),
-                     m_xyz011->getPointer(i * 18 + 15),          // write to the next triplet in memory
-                     [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
-
-      // -----------------------------------------------------------------------------
-      // [2-1-10] also [100]
-      direction[0] = 1.0;
-      direction[1] = 0.0;
-      direction[2] = 0.0;
-      (gTranspose * direction).copyInto<float>(m_xyz111->getPointer(i * 18));
-      std::transform(m_xyz111->getPointer(i * 18), m_xyz111->getPointer(i * 18 + 3),
-                     m_xyz111->getPointer(i * 18 + 3),           // write to the next triplet in memory
-                     [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
-      direction[0] = 0.5;
-      direction[1] = ebsdlib::constants::k_Root3Over2D;
-      direction[2] = 0.0;
-      (gTranspose * direction).copyInto<float>(m_xyz111->getPointer(i * 18 + 6));
-      std::transform(m_xyz111->getPointer(i * 18 + 6), m_xyz111->getPointer(i * 18 + 9),
-                     m_xyz111->getPointer(i * 18 + 9),           // write to the next triplet in memory
-                     [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
-      direction[0] = -0.5;
-      direction[1] = ebsdlib::constants::k_Root3Over2D;
-      direction[2] = 0.0;
-      (gTranspose * direction).copyInto<float>(m_xyz111->getPointer(i * 18 + 12));
-      std::transform(m_xyz111->getPointer(i * 18 + 12), m_xyz111->getPointer(i * 18 + 15),
-                     m_xyz111->getPointer(i * 18 + 15),          // write to the next triplet in memory
-                     [](float value) { return value * -1.0F; }); // Multiply each value by -1.0
+      // 0001 Family (typically 1 unique direction; antipode written by emitDirAndAntipode).
+      for(size_t k = 0; k < m_Sym->dirsFamily0.size(); ++k)
+      {
+        emitDirAndAntipode(gTranspose, m_Sym->dirsFamily0[k], m_xyz001, i * f0Stride + k * 2);
+      }
+      // {10-10} plane-normal family (3 unique under hex 6/mmm).
+      for(size_t k = 0; k < m_Sym->dirsFamily1.size(); ++k)
+      {
+        emitDirAndAntipode(gTranspose, m_Sym->dirsFamily1[k], m_xyz011, i * f1Stride + k * 2);
+      }
+      // {2-1-10} plane-normal family (3 unique under hex 6/mmm), offset 30° from {10-10}.
+      for(size_t k = 0; k < m_Sym->dirsFamily2.size(); ++k)
+      {
+        emitDirAndAntipode(gTranspose, m_Sym->dirsFamily2[k], m_xyz111, i * f2Stride + k * 2);
+      }
     }
   }
 
@@ -1182,7 +1295,8 @@ public:
 } // namespace HexagonalHigh
 
 // -----------------------------------------------------------------------------
-void HexagonalOps::generateSphereCoordsFromEulers(ebsdlib::FloatArrayType* eulers, ebsdlib::FloatArrayType* xyz0001, ebsdlib::FloatArrayType* xyz1010, ebsdlib::FloatArrayType* xyz1120) const
+void HexagonalOps::generateSphereCoordsFromEulers(ebsdlib::FloatArrayType* eulers, ebsdlib::FloatArrayType* xyz0001, ebsdlib::FloatArrayType* xyz1010, ebsdlib::FloatArrayType* xyz1120,
+                                                  ebsdlib::HexConvention conv) const
 {
   size_t nOrientations = eulers->getNumberOfTuples();
 
@@ -1200,16 +1314,21 @@ void HexagonalOps::generateSphereCoordsFromEulers(ebsdlib::FloatArrayType* euler
     xyz1120->resizeTuples(nOrientations * HexagonalHigh::k_SymSize2 * 3);
   }
 
+  // Pick the convention-appropriate SymOps instance once. The two static
+  // instances (canonical X||a* and derived X||a) live in the HexagonalHigh
+  // namespace block above.
+  const HexagonalHigh::SymOps* sym = (conv == ebsdlib::HexConvention::XParallelAStar) ? &HexagonalHigh::k_SymOps_XParallelAStar : &HexagonalHigh::k_SymOps_XParallelA;
+
 #ifdef EbsdLib_USE_PARALLEL_ALGORITHMS
   bool doParallel = true;
   if(doParallel)
   {
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, nOrientations), HexagonalHigh::GenerateSphereCoordsImpl(eulers, xyz0001, xyz1010, xyz1120), tbb::auto_partitioner());
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, nOrientations), HexagonalHigh::GenerateSphereCoordsImpl(eulers, xyz0001, xyz1010, xyz1120, sym), tbb::auto_partitioner());
   }
   else
 #endif
   {
-    HexagonalHigh::GenerateSphereCoordsImpl serial(eulers, xyz0001, xyz1010, xyz1120);
+    HexagonalHigh::GenerateSphereCoordsImpl serial(eulers, xyz0001, xyz1010, xyz1120, sym);
     serial.generate(0, nOrientations);
   }
 }
@@ -1228,17 +1347,17 @@ bool HexagonalOps::inUnitTriangle(double eta, double chi) const
 }
 
 // -----------------------------------------------------------------------------
-ebsdlib::Rgb HexagonalOps::generateIPFColor(double* eulers, double* refDir, bool degToRad) const
+ebsdlib::Rgb HexagonalOps::generateIPFColor(double* eulers, double* refDir, bool degToRad, ebsdlib::ColorKeyKind kind) const
 {
-  return computeIPFColor(eulers, refDir, degToRad);
+  return computeIPFColor(eulers, refDir, degToRad, keyForKind(kind).get());
 }
 
 // -----------------------------------------------------------------------------
-ebsdlib::Rgb HexagonalOps::generateIPFColor(double phi1, double phi, double phi2, double refDir0, double refDir1, double refDir2, bool degToRad) const
+ebsdlib::Rgb HexagonalOps::generateIPFColor(double phi1, double phi, double phi2, double refDir0, double refDir1, double refDir2, bool degToRad, ebsdlib::ColorKeyKind kind) const
 {
   double eulers[3] = {phi1, phi, phi2};
   double refDir[3] = {refDir0, refDir1, refDir2};
-  return computeIPFColor(eulers, refDir, degToRad);
+  return computeIPFColor(eulers, refDir, degToRad, keyForKind(kind).get());
 }
 
 // -----------------------------------------------------------------------------
@@ -1263,15 +1382,26 @@ ebsdlib::Rgb HexagonalOps::generateRodriguesColor(double r1, double r2, double r
 }
 
 // -----------------------------------------------------------------------------
-std::array<std::string, 3> HexagonalOps::getDefaultPoleFigureNames() const
+std::array<std::string, 3> HexagonalOps::getDefaultPoleFigureNames(ebsdlib::HexConvention conv) const
 {
-  return {"<0001>", "<10-10>", "<2-1-10>"};
+  // The a-family slot is sym-equivalent under the 6-fold; <2-1-10> and
+  // <11-20> are different orbit members of the same physical family.
+  // Different software ecosystems pick different representatives:
+  //   X||a (OIM / EDAX / legacy DREAM3D): <2-1-10>  (the a-vector itself)
+  //   X||a* (MTEX / Oxford):              <11-20>
+  // Match the user's expected toolchain so the printed labels line up
+  // with what they see in OIM Analysis or MTEX side-by-side.
+  if(conv == ebsdlib::HexConvention::XParallelA)
+  {
+    return {"<0001>", "<10-10>", "<2-1-10>"};
+  }
+  return {"<0001>", "<10-10>", "<11-20>"};
 }
 
 // -----------------------------------------------------------------------------
 std::vector<ebsdlib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(PoleFigureConfiguration_t& config) const
 {
-  std::array<std::string, 3> labels = getDefaultPoleFigureNames();
+  std::array<std::string, 3> labels = getDefaultPoleFigureNames(config.hexConvention);
   std::string label0 = labels[0];
   std::string label1 = labels[1];
   std::string label2 = labels[2];
@@ -1291,7 +1421,7 @@ std::vector<ebsdlib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(P
 
   size_t numOrientations = config.eulers->getNumberOfTuples();
 
-  // Create an Array to hold the XYZ Coordinates which are the coords on the sphere.
+  // Create an Array to hold the XYZ Coordinates, which are the coords on the sphere.
   // this is size for CUBIC ONLY, <001> Family
   std::vector<size_t> dims(1, 3);
   ebsdlib::FloatArrayType::Pointer xyz001 = ebsdlib::FloatArrayType::CreateArray(numOrientations * HexagonalHigh::k_SymSize0, dims, label0 + std::string("xyzCoords"), true);
@@ -1303,7 +1433,7 @@ std::vector<ebsdlib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(P
   config.sphereRadius = 1.0f;
 
   // Generate the coords on the sphere **** Parallelized
-  generateSphereCoordsFromEulers(config.eulers, xyz001.get(), xyz011.get(), xyz111.get());
+  generateSphereCoordsFromEulers(config.eulers, xyz001.get(), xyz011.get(), xyz111.get(), config.hexConvention);
 
   // These arrays hold the "intensity" images which eventually get converted to an actual Color RGB image
   // Generate the modified Lambert projection images (Squares, 2 of them, 1 for Northern Hemisphere, 1 for Southern Hemisphere
@@ -1426,7 +1556,7 @@ std::vector<ebsdlib::UInt8ArrayType::Pointer> HexagonalOps::generatePoleFigure(P
 
 namespace
 {
-ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const HexagonalOps* ops, int imageDim, bool generateEntirePlane)
+ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const HexagonalOps* ops, int imageDim, bool generateEntirePlane, const ebsdlib::IColorKey* key)
 {
   std::vector<size_t> dims(1, 4);
   std::string arrayName = EbsdStringUtils::replace(ops->getSymmetryName(), "/", "_");
@@ -1470,14 +1600,17 @@ ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const HexagonalOps* ops, int im
       {
         color = 0xFFFFFFFF;
       }
-      else if(!generateEntirePlane && x < 0.0F)
+      // Use <= here so the x=0 column (stereographic y-axis) is treated as
+      // outside the SST and rendered white. The original < produced a single
+      // stray vertical pixel column down the centerline of the image.
+      else if(!generateEntirePlane && x <= 0.0F)
       {
         color = 0xFFFFFFFF;
       }
       else
       {
         auto sphericalCoords = stereographic::utils::StereoToSpherical(x, y).normalize();
-        color = ops->generateIPFColor(k_Orientation.data(), sphericalCoords.data(), false);
+        color = ops->computeIPFColor(k_Orientation.data(), sphericalCoords.data(), false, key);
       }
 
       pixelPtr[idx] = color;
@@ -1488,8 +1621,62 @@ ebsdlib::UInt8ArrayType::Pointer CreateIPFLegend(const HexagonalOps* ops, int im
 }
 
 // -----------------------------------------------------------------------------
-void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float fontPtSize, std::vector<float> margins, std::array<float, 2> figureOrigin, std::array<float, 2> figureCenter,
-                               bool drawFullCircle)
+} // namespace
+
+// -----------------------------------------------------------------------------
+bool HexagonalOps::mapPixelToSphereSST(int xPixel, int yPixel, int imageDim, std::array<float, 3>& sphereDir) const
+{
+  double xInc = 1.0 / static_cast<double>(imageDim);
+  double yInc = 1.0 / static_cast<double>(imageDim);
+
+  double x = -1.0 + 2.0 * xPixel * xInc;
+  double y = -1.0 + 2.0 * yPixel * yInc;
+
+  double sumSquares = (x * x) + (y * y);
+  if(sumSquares > 1.0)
+  {
+    return false;
+  }
+
+  // Find the slope of the bounding line.
+  static const double m = -1.0 * std::sin(30.0 * ebsdlib::constants::k_PiOver180D) / std::cos(30.0 * ebsdlib::constants::k_PiOver180D);
+
+  if(x < y / m && x > 0.0)
+  {
+    return false;
+  }
+  if(x > y / m && y > 0.0)
+  {
+    return false;
+  }
+  if(x < 0.0)
+  {
+    return false;
+  }
+
+  auto sc = stereographic::utils::StereoToSpherical(x, y).normalize();
+
+  sphereDir[0] = static_cast<float>(sc[0]);
+  sphereDir[1] = static_cast<float>(sc[1]);
+  sphereDir[2] = static_cast<float>(sc[2]);
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+std::array<float, 2> HexagonalOps::adjustFigureOrigin(std::array<float, 2> figureOrigin, int legendWidth, int legendHeight, const std::vector<float>& margins, float fontPtSize,
+                                                      bool generateEntirePlane) const
+{
+  if(!generateEntirePlane)
+  {
+    figureOrigin[0] = -margins[3] * 0.5F;
+    figureOrigin[1] = -(legendHeight / 2) + margins[0] + fontPtSize;
+  }
+  return figureOrigin;
+}
+
+// -----------------------------------------------------------------------------
+void HexagonalOps::drawIPFAnnotations(canvas_ity::canvas& context, int canvasDim, float fontPtSize, const std::vector<float>& margins, std::array<float, 2> figureOrigin,
+                                      std::array<float, 2> figureCenter, bool drawFullCircle, ebsdlib::HexConvention conv) const
 {
   int legendHeight = canvasDim - margins[0] - margins[2];
   int legendWidth = canvasDim - margins[1] - margins[3];
@@ -1508,7 +1695,13 @@ void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float
   int halfHeight = legendHeight / 2;
 
   std::vector<float> angles = {0.0f, 30.0f, 60.0f, 90.0f, 120.0f, 150.0f, 180.0f, 210.0f, 240.0f, 270.0f, 300.0f, 330.0f};
-  std::vector<std::string> labels2 = {"[2-1-10]", "[10-10]", "[11-20]", "[01-10]", "[-12-10]", "[-1100]", "[-2110]", "[-1010]", "[-1-120]", "[0-110]", "[1-210]", "[1-100]"};
+
+  // X||a labels: cartesian +X = a-vector. Angle 0° = a = [2-1-10]; angle 30° = a* = [10-10].
+  // X||a* labels: cartesian +X = a*-vector. Equivalent to rotating the X||a label list one slot
+  // to the left (labels_X_astar[i] = labels_X_a[(i + 1) % 12]) — under X||a* angle 0° = [10-10].
+  static const std::vector<std::string> labels_X_a = {"[2-1-10]", "[10-10]", "[11-20]", "[01-10]", "[-12-10]", "[-1100]", "[-2110]", "[-1010]", "[-1-120]", "[0-110]", "[1-210]", "[1-100]"};
+  static const std::vector<std::string> labels_X_astar = {"[10-10]", "[11-20]", "[01-10]", "[-12-10]", "[-1100]", "[-2110]", "[-1010]", "[-1-120]", "[0-110]", "[1-210]", "[1-100]", "[2-1-10]"};
+  const std::vector<std::string>& labels2 = (conv == ebsdlib::HexConvention::XParallelA) ? labels_X_a : labels_X_astar;
 
   std::vector<float> xAdj = {
       0.1F, 0.0F, 0.0F, -0.5F, -1.0F, -1.0F, -1.1F, -1.1F, -1.1F, -0.5F, 0.0F, 0.0F,
@@ -1574,20 +1767,14 @@ void DrawFullCircleAnnotations(canvas_ity::canvas& context, int canvasDim, float
   }
 }
 
-} // namespace
 // -----------------------------------------------------------------------------
-ebsdlib::UInt8ArrayType::Pointer HexagonalOps::generateIPFTriangleLegend(int canvasDim, bool generateEntirePlane) const
+ebsdlib::UInt8ArrayType::Pointer HexagonalOps::generateIPFTriangleLegend(int canvasDim, bool generateEntirePlane, ebsdlib::HexConvention conv, ebsdlib::ColorKeyKind kind, bool gridded) const
 {
-  // Figure out the Legend Pixel Size
+  // Compute legend dimensions (same formula as annotateIPFImage uses)
   const float fontPtSize = static_cast<float>(canvasDim) / 24.0f;
-  const std::vector<float> margins = {fontPtSize * 3,                        // Top
-                                      static_cast<float>(canvasDim / 7.0f),  // Right
-                                      fontPtSize * 2,                        // Bottom
-                                      static_cast<float>(canvasDim / 7.0f)}; // Left
-
-  int legendHeight = canvasDim - margins[0] - margins[2];
-  int legendWidth = canvasDim - margins[1] - margins[3];
-
+  const std::vector<float> margins = {fontPtSize * 3, static_cast<float>(canvasDim / 7.0f), fontPtSize * 2, static_cast<float>(canvasDim / 7.0f)};
+  int legendHeight = canvasDim - static_cast<int>(margins[0]) - static_cast<int>(margins[2]);
+  int legendWidth = canvasDim - static_cast<int>(margins[1]) - static_cast<int>(margins[3]);
   if(legendHeight > legendWidth)
   {
     legendHeight = legendWidth;
@@ -1596,64 +1783,17 @@ ebsdlib::UInt8ArrayType::Pointer HexagonalOps::generateIPFTriangleLegend(int can
   {
     legendWidth = legendHeight;
   }
-  int pageHeight = canvasDim;
-  int pageWidth = canvasDim;
-  int halfWidth = legendWidth / 2;
-  int halfHeight = legendHeight / 2;
 
-  std::array<float, 2> figureOrigin = {margins[3], margins[0] * 1.33F};
-  if(!generateEntirePlane)
+  // Generate the colored SST triangle image (ARGB)
+  ebsdlib::IColorKey::Pointer key = keyForKind(kind);
+  if(gridded)
   {
-    figureOrigin[0] = 0.0 - margins[3] * 0.5F; // -halfWidth * 0.45F ;
-    figureOrigin[1] = 0.0F - halfHeight + margins[0] + fontPtSize;
+    key = std::make_shared<ebsdlib::GriddedColorKey>(key, 1.0);
   }
-  std::array<float, 2> figureCenter = {figureOrigin[0] + halfWidth, figureOrigin[1] + halfHeight};
+  ebsdlib::UInt8ArrayType::Pointer image = CreateIPFLegend(this, legendHeight, generateEntirePlane, key.get());
 
-  ebsdlib::UInt8ArrayType::Pointer image = CreateIPFLegend(this, legendHeight, generateEntirePlane);
-
-  // Create a Canvas to draw into
-  canvas_ity::canvas context(pageWidth, pageHeight);
-
-  std::vector<unsigned char> latoBold = ebsdlib::fonts::GetLatoBold();
-  std::vector<unsigned char> latoRegular = ebsdlib::fonts::GetLatoRegular();
-  context.set_font(latoBold.data(), static_cast<int>(latoBold.size()), fontPtSize);
-  context.set_color(canvas_ity::fill_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  canvas_ity::baseline_style const baselines[] = {canvas_ity::alphabetic, canvas_ity::top, canvas_ity::middle, canvas_ity::bottom, canvas_ity::hanging, canvas_ity::ideographic};
-  context.text_baseline = baselines[0];
-
-  // Fill the whole background with white
-  context.move_to(0.0f, 0.0f);
-  context.line_to(static_cast<float>(pageWidth), 0.0f);
-  context.line_to(static_cast<float>(pageWidth), static_cast<float>(pageHeight));
-  context.line_to(0.0f, static_cast<float>(pageHeight));
-  context.line_to(0.0f, 0.0f);
-  context.close_path();
-  context.set_color(canvas_ity::fill_style, 1.0f, 1.0f, 1.0f, 1.0f);
-  context.fill();
-
-  // Convert from ARGB to RGBA which is what canvas_itk wants
-  image = ebsdlib::ConvertColorOrder(image.get(), legendHeight);
-
-  // We need to mirror across the X Axis because the image was drawn with +Y pointing down
-  image = ebsdlib::MirrorImage(image.get(), legendHeight);
-
-  context.draw_image(image->getPointer(0), legendWidth, legendHeight, legendWidth * image->getNumberOfComponents(), figureOrigin[0], figureOrigin[1], static_cast<float>(legendWidth),
-                     static_cast<float>(legendHeight));
-
-  // Draw Title of Legend
-  context.set_font(latoBold.data(), static_cast<int>(latoBold.size()), fontPtSize * 1.5);
-  ebsdlib::WriteText(context, getSymmetryName(), {margins[0], static_cast<float>(fontPtSize * 1.5)}, fontPtSize * 1.5);
-
-  context.set_font(latoRegular.data(), static_cast<int>(latoRegular.size()), fontPtSize);
-  DrawFullCircleAnnotations(context, canvasDim, fontPtSize, margins, figureOrigin, figureCenter, generateEntirePlane);
-
-  // Fetch the rendered RGBA pixels from the entire canvas.
-  ebsdlib::UInt8ArrayType::Pointer rgbaCanvasImage = ebsdlib::UInt8ArrayType::CreateArray(pageHeight * pageWidth, {4ULL}, "Triangle Legend", true);
-  // std::vector<unsigned char> rgbaCanvasImage(static_cast<size_t>(pageHeight * pageWidth * 4));
-  context.get_image_data(rgbaCanvasImage->getPointer(0), pageWidth, pageHeight, pageWidth * 4, 0, 0);
-
-  rgbaCanvasImage = ebsdlib::RemoveAlphaChannel(rgbaCanvasImage.get());
-  return rgbaCanvasImage;
+  // Annotate with title and Miller index labels
+  return annotateIPFImage(image, legendHeight, canvasDim, getSymmetryName(), generateEntirePlane, false, conv);
 }
 
 // -----------------------------------------------------------------------------

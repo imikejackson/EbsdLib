@@ -34,11 +34,16 @@
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 #pragma once
 
+#include <array>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <canvas_ity.hpp>
+
 #include "EbsdLib/Core/EbsdDataArray.hpp"
+#include "EbsdLib/Core/EbsdLibConstants.h"
 #include "EbsdLib/EbsdLib.h"
 #include "EbsdLib/Math/Matrix3X3.hpp"
 #include "EbsdLib/Orientation/AxisAngle.hpp"
@@ -46,7 +51,11 @@
 #include "EbsdLib/Orientation/OrientationFwd.hpp"
 #include "EbsdLib/Orientation/Quaternion.hpp"
 #include "EbsdLib/Orientation/Rodrigues.hpp"
+#include "EbsdLib/Utilities/GriddedColorKey.hpp"
+#include "EbsdLib/Utilities/IColorKey.hpp"
+#include "EbsdLib/Utilities/InversePoleFigureUtilities.h"
 #include "EbsdLib/Utilities/PoleFigureUtilities.h"
+#include "EbsdLib/Utilities/TSLColorKey.hpp"
 
 namespace ebsdlib
 {
@@ -162,6 +171,12 @@ public:
   virtual std::array<size_t, 3> getOdfNumBins() const = 0;
 
   /**
+   * @breif Returns the ODF Bin step size, which is 5 degrees.
+   * @return
+   */
+  virtual std::array<float, 3> getOdfBinStepSize() const;
+
+  /**
    * @brief calculateMisorientation Finds the misorientation between 2 quaternions and returns the result as an Axis Angle value
    * @param q1 Input Quaternion
    * @param q2 Input Quaternion
@@ -255,7 +270,15 @@ public:
 
   virtual double getF7(const QuatD& q1, const QuatD& q2, double LD[3], bool maxSF) const = 0;
 
-  virtual void generateSphereCoordsFromEulers(FloatArrayType* eulers, FloatArrayType* c1, FloatArrayType* c2, FloatArrayType* c3) const = 0;
+  /**
+   * @brief Generate the sphere-coordinate sets for the three default plane families
+   * @param conv Cartesian basis convention. Hex/trig overrides require an
+   *             explicit XParallelA or XParallelAStar; non-hex/trig overrides
+   *             default this to NotApplicable and ignore it internally. The
+   *             base virtual has no default, so polymorphic callers must
+   *             choose deliberately.
+   */
+  virtual void generateSphereCoordsFromEulers(FloatArrayType* eulers, FloatArrayType* c1, FloatArrayType* c2, FloatArrayType* c3, ebsdlib::HexConvention conv) const = 0;
 
   static void RodriguesComposition(RodriguesDType sigma, RodriguesDType& rod);
 
@@ -267,33 +290,31 @@ public:
   virtual std::array<double, 3> getIpfColorAngleLimits(double eta) const = 0;
 
   /**
-   * @brief generateIPFColor Generates an ARGB Color from an Euler Angle and Reference Direction
+   * @brief generateIPFColor Generates an ARGB Color from an Euler Angle and Reference Direction.
+   *
+   * IPF color is convention-invariant for all 11 Laue classes — both
+   * X||a and X||a* hex/trig bases produce identical SST colors because the
+   * standard stereographic triangle is invariant under the basis rotation
+   * between them. The hex/trig SymOps tables that drive the FZ reduction are
+   * chosen internally; callers don't pass a HexConvention here.
+   *
    * @param eulers Pointer to the 3 component Euler Angle
    * @param refDir Pointer to the 3 Component Reference Direction
    * @param convertDegrees Are the input angles in Degrees
-   * @return rgb [output] The pointer to store the RGB value
+   * @param kind Which per-class color key to use (TSL / PUCM / Nolze-Hielscher).
+   *             Defaults to TSL.
    */
-  virtual Rgb generateIPFColor(double* eulers, double* refDir, bool convertDegrees) const = 0;
+  virtual Rgb generateIPFColor(double* eulers, double* refDir, bool convertDegrees, ebsdlib::ColorKeyKind kind = ebsdlib::ColorKeyKind::TSL) const = 0;
 
   /**
-   * @brief generateIPFColor Generates an ARGB Color from an Euler Angle and Reference Direction
-   * @param e0 First component of the Euler Angle
-   * @param e1 Second component of the Euler Angle
-   * @param e2 Third component of the Euler Angle
-   * @param dir0 First component of the Reference Direction
-   * @param dir1 Second component of the Reference Direction
-   * @param dir2 Third component of the Reference Direction
-   * @param convertDegrees Are the input angles in Degrees
-   * @return rgb [output] The pointer to store the RGB value
+   * @brief generateIPFColor scalar overload. See pointer overload for semantics.
    */
-  virtual Rgb generateIPFColor(double e0, double e1, double e2, double dir0, double dir1, double dir2, bool convertDegrees) const = 0;
+  virtual Rgb generateIPFColor(double e0, double e1, double e2, double dir0, double dir1, double dir2, bool convertDegrees, ebsdlib::ColorKeyKind kind = ebsdlib::ColorKeyKind::TSL) const = 0;
 
   /**
-   * @brief generateRodriguesColor Generates an RGB Color from a Rodrigues Vector
-   * @param r1 First component of the Rodrigues Vector
-   * @param r2 Second component of the Rodrigues Vector
-   * @param r3 Third component of the Rodrigues Vector
-   * @return rgb [output] The pointer to store the RGB value
+   * @brief generateRodriguesColor Generates an RGB Color from a Rodrigues Vector.
+   *
+   * Convention-invariant for the same reason generateIPFColor is.
    */
   virtual Rgb generateRodriguesColor(double r1, double r2, double r3) const = 0;
 
@@ -315,16 +336,89 @@ public:
   virtual std::vector<UInt8ArrayType::Pointer> generatePoleFigure(PoleFigureConfiguration_t& config) const = 0;
 
   /**
-   * @brief Returns the names for each of the three standard pole figures that are generated. For example
-   *<001>, <011> and <111> for a cubic system
+   * @brief Returns the names for each of the three standard pole figures that
+   * are generated. For example <001>, <011> and <111> for a cubic system.
+   *
+   * Hex/trig overrides require an explicit convention. Non-hex/trig overrides
+   * default this argument to NotApplicable.
    */
-  virtual std::array<std::string, 3> getDefaultPoleFigureNames() const = 0;
+  virtual std::array<std::string, 3> getDefaultPoleFigureNames(ebsdlib::HexConvention conv) const = 0;
 
   /**
-   * @brief generateStandardTriangle Generates an RGBA array that is a color "Standard" IPF Triangle Legend used for IPF Color Maps.
-   * @return
+   * @brief Generate the colored, labeled IPF triangle legend.
+   *
+   * @param imageDim Square canvas size in pixels.
+   * @param generateEntirePlane true => full unit circle; false => SST only.
+   * @param conv Cartesian basis convention. Hex/trig overrides require an
+   *             explicit convention; non-hex/trig overrides default to
+   *             NotApplicable. The base virtual has no default, so polymorphic
+   *             callers must choose deliberately.
+   * @param kind Which per-class color key to use. Defaults to TSL.
+   * @param gridded If true, wrap the selected key in a GriddedColorKey
+   *                (~1° resolution) for MTEX-style flat-shaded cells. Only
+   *                meaningful for legends; the per-pixel generateIPFColor
+   *                path does not expose this knob.
    */
-  virtual UInt8ArrayType::Pointer generateIPFTriangleLegend(int imageDim, bool generateEntirePlane) const = 0;
+  virtual UInt8ArrayType::Pointer generateIPFTriangleLegend(int imageDim, bool generateEntirePlane, ebsdlib::HexConvention conv, ebsdlib::ColorKeyKind kind = ebsdlib::ColorKeyKind::TSL,
+                                                            bool gridded = false) const = 0;
+
+  /**
+   * @brief Computes the SST color for a Euler-rotated reference direction
+   * using the supplied color key. Runs the FZ symmetry-reduction loop common
+   * to every Laue class, then queries the key.
+   *
+   * @param key Color key to use (TSL/PUCM/NH/GriddedColorKey wrapper, etc.).
+   *            If null, a built-in fallback coloring is used.
+   *
+   * Public so that the per-class CreateIPFLegend renderers can call it
+   * directly with a (possibly gridded-wrapped) key without going through
+   * generateIPFColor's kind enum.
+   */
+  Rgb computeIPFColor(double* eulers, double* refDir, bool degToRad, const ebsdlib::IColorKey* key) const;
+
+  /**
+   * @brief Per-subclass hook that draws Miller index labels and SST boundary
+   * annotations onto a canvas. Called by annotateIPFImage().
+   */
+  virtual void drawIPFAnnotations(canvas_ity::canvas& context, int canvasDim, float fontPtSize, const std::vector<float>& margins, std::array<float, 2> figureOrigin, std::array<float, 2> figureCenter,
+                                  bool drawFullCircle, ebsdlib::HexConvention conv) const = 0;
+
+  /**
+   * @brief Maps a pixel coordinate to a unit sphere direction using the same
+   * stereographic projection as CreateIPFLegend (SST-only view).
+   * @param xPixel X pixel coordinate [0, imageDim)
+   * @param yPixel Y pixel coordinate [0, imageDim)
+   * @param imageDim Image dimension (square)
+   * @param sphereDir Output: unit sphere direction if pixel is inside SST
+   * @return true if the pixel maps to a point inside the Standard Stereographic Triangle
+   */
+  virtual bool mapPixelToSphereSST(int xPixel, int yPixel, int imageDim, std::array<float, 3>& sphereDir) const;
+
+  /**
+   * @brief Per-subclass hook that adjusts the figureOrigin when rendering
+   * SST-only view. Each subclass overrides to position its triangle shape
+   * correctly within the canvas. Default returns figureOrigin unchanged.
+   */
+  virtual std::array<float, 2> adjustFigureOrigin(std::array<float, 2> figureOrigin, int legendWidth, int legendHeight, const std::vector<float>& margins, float fontPtSize,
+                                                  bool generateEntirePlane) const;
+
+  /**
+   * @brief Generates 3 annotated inverse pole figure density images with
+   * title, Miller index labels, and MRD color bar.
+   * @param config Configuration struct; imageWidth must equal imageHeight (square images required)
+   * @param outMinMax Optional output for the global [min, max] intensity values
+   */
+  std::vector<UInt8ArrayType::Pointer> generateAnnotatedIPFDensity(InversePoleFigureConfiguration_t& config, std::pair<double, double>* outMinMax = nullptr) const;
+
+  /**
+   * @brief Generates 3 inverse pole figure density images for 3 orthogonal sample directions.
+   * The IPF density plot shows how a sample direction distributes across crystal directions
+   * within the Standard Stereographic Triangle (SST) using equal-area projection.
+   * This is a non-virtual base class method that works through existing virtual dispatch.
+   * @param config The configuration struct controlling the IPF generation
+   * @return A std::vector of 3 UInt8ArrayType pointers, each representing a 2D RGBA image
+   */
+  std::vector<UInt8ArrayType::Pointer> generateInversePoleFigure(InversePoleFigureConfiguration_t& config) const;
 
   enum class FZType : int32_t
   {
@@ -440,6 +534,24 @@ protected:
   LaueOps();
 
   /**
+   * @brief Shared annotation scaffolding for IPF images. Creates a canvas,
+   * draws the triangle image, adds title and per-subclass annotations.
+   * @param triangleImage Pre-rendered ARGB image (square, imageDim x imageDim)
+   * @param imageDim Pixel dimension of the triangle image (square)
+   * @param canvasDim Pixel dimension of the output canvas (square)
+   * @param title Text to draw as the title
+   * @param generateEntirePlane true = full circle view, false = SST only
+   * @return RGB image (canvasDim x canvasDim, 3 components)
+   */
+  UInt8ArrayType::Pointer annotateIPFImage(UInt8ArrayType::Pointer triangleImage, int imageDim, int canvasDim, const std::string& title, bool generateEntirePlane, bool hasColorBar,
+                                           ebsdlib::HexConvention conv) const;
+
+  /**
+   * @brief Draws a color bar with min/max labels onto an existing RGB image.
+   */
+  UInt8ArrayType::Pointer drawColorBar(UInt8ArrayType::Pointer image, int canvasDim, int numColors, double minValue, double maxValue, bool isMRD) const;
+
+  /**
    * @brief calculateMisorientationInternal
    * @param quatsym The Symmetry Quarternion from the specific Laue class
    * @param q1 Input Quaternion 1
@@ -496,16 +608,6 @@ protected:
    * @return
    */
   int _calcODFBin(double dim[3], double bins[3], double step[3], const HomochoricDType& homochoric) const;
-
-  /**
-   * @brief Generates an IPF Color for a given Euler and Reference Direction. This should be called from the subclass so the
-   * specific etaMin, etaMax and ChiMax can be passed in.
-   * @param eulers
-   * @param refDir
-   * @param deg2Rad
-   * @return
-   */
-  Rgb computeIPFColor(double* eulers, double* refDir, bool degToRad) const;
 
   /**
    * @brief Converts in input Quaternion into a version that is inside the fundamental zone.

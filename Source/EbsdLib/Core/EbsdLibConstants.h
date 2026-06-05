@@ -164,6 +164,54 @@ enum class OEM : EnumType
   Unknown = 8
 };
 
+/**
+ * @brief Selects the Cartesian basis convention for hexagonal/trigonal
+ * crystal-frame computations and rendering. The two conventions differ by
+ * a 30° rotation about the c-axis in the basal plane and produce pole-figure
+ * outputs rotated 30° relative to one another for hex/trig phases.
+ *
+ *  - XParallelA: real-lattice a along Cartesian X. Used by EDAX/TSL/OIM
+ *    Analysis. Every released DREAM.3D / DREAM3DNX / SIMPL / SIMPLNX file
+ *    stores hex/trig EulerAngles in this form by codebase guarantee.
+ *    This is the default for all rendering APIs to preserve backward
+ *    compatibility with existing pipelines.
+ *
+ *  - XParallelAStar: reciprocal-lattice a* along Cartesian X. Used by
+ *    Oxford/HKL acquisition systems (Channel 5, AZtec) and MTEX.
+ *    Opt-in for users wanting MTEX-comparable visual output.
+ *
+ * Convention only affects hex/trig Laue classes — cubic, tetragonal,
+ * orthorhombic, monoclinic, and triclinic accept the parameter but
+ * ignore it internally.
+ *
+ * See Code_Review/v3_phase0_design_notes.md and
+ * Docs/x_parallel_a_star_convention.svg for the geometric picture and the
+ * full design rationale.
+ */
+enum class HexConvention : uint8_t
+{
+  XParallelA = 0,
+  XParallelAStar = 1,
+  NotApplicable = 2
+};
+
+/**
+ * @brief Identifies which IPF coloring scheme a LaueOps subclass should use
+ * for generateIPFColor / generateIPFTriangleLegend dispatch.
+ *
+ * Each LaueOps subclass owns a per-class singleton for each kind (a TSL
+ * singleton, a PUCM singleton parameterized by its rotation point group,
+ * and a Nolze-Hielscher singleton parameterized by its fundamental sector).
+ * Callers select among them by passing the kind enum at the call site
+ * instead of mutating a long-lived color-key member on the LaueOps object.
+ */
+enum class ColorKeyKind : uint8_t
+{
+  TSL = 0,
+  PUCM = 1,
+  NolzeHielscher = 2
+};
+
 namespace CellData
 {
 EbsdLib_macOS_NO_EXPORT inline constexpr EbsdStringLiteral EulerAngles("EulerAngles");

@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 800 520" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;">
+    <rect x="0" y="0" width="800" height="520" style="fill:white;"/>
+    <g transform="matrix(1,0,0,1,400,34)">
+        <text x="-259.775px" y="0px" style="font-family:'Helvetica-Bold', 'Helvetica';font-weight:700;font-size:19px;fill:rgb(26,26,26);">X‖a  vs  X‖a*  —  Hexagonal Cartesian-frame conventions</text>
+    </g>
+    <g transform="matrix(1,0,0,1,400,54)">
+        <text x="-279.809px" y="0px" style="font-family:'Helvetica';font-size:12px;fill:rgb(102,102,102);">Same crystal, same physics. Only the choice of where Cartesian X points within the basal plane changes.</text>
+    </g>
+    <path d="M400,78L400,468" style="fill:none;fill-rule:nonzero;stroke:rgb(229,229,229);stroke-width:1px;"/>
+    <g transform="matrix(1,0,0,1,200,98)">
+        <text x="-96.827px" y="0px" style="font-family:'Helvetica';font-size:13px;fill:rgb(51,51,51);">Basal plane (looking down c-axis)</text>
+    </g>
+    <path d="M132.5,406.9L267.5,406.9L335,290L267.5,173.1L132.5,173.1L65,290L132.5,406.9Z" style="fill:rgb(250,250,250);fill-rule:nonzero;stroke:rgb(187,187,187);stroke-width:1px;"/>
+    <g>
+        <path d="M200,290L136,400.85" style="fill:none;fill-rule:nonzero;stroke:rgb(170,170,170);stroke-width:1.3px;stroke-dasharray:5,3;"/>
+        <path d="M200,290L328,290" style="fill:none;fill-rule:nonzero;stroke:rgb(170,170,170);stroke-width:1.3px;stroke-dasharray:5,3;"/>
+        <path d="M200,290L136,179.15" style="fill:none;fill-rule:nonzero;stroke:rgb(170,170,170);stroke-width:1.3px;stroke-dasharray:5,3;"/>
+    </g>
+    <g>
+        <g transform="matrix(1,0,0,1,115.166,419.143)">
+            <text x="-54.487px" y="0px" style="font-family:'Helvetica';font-size:13px;fill:rgb(119,119,119);">a</text>
+            <text x="-47.257px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(119,119,119);">1</text>
+            <text x="-39.751px" y="0px" style="font-family:'Helvetica';font-size:12px;fill:rgb(119,119,119);">||</text>
+            <g transform="matrix(9,0,0,9,0,0)">
+            </g>
+            <text x="-31.017px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(119,119,119);">[2-1-10]</text>
+        </g>
+        <g transform="matrix(1,0,0,1,340,294)">
+            <text x="0px" y="0px" style="font-family:'Helvetica-Oblique', 'Helvetica';font-style:italic;font-size:13px;fill:rgb(119,119,119);">a</text>
+            <text x="7.23px" y="0px" style="font-family:'Helvetica-Oblique', 'Helvetica';font-style:italic;font-size:9px;fill:rgb(119,119,119);">2</text>
+        </g>
+        <g transform="matrix(1,0,0,1,130.447,166.057)">
+            <text x="-12.235px" y="0px" style="font-family:'Helvetica-Oblique', 'Helvetica';font-style:italic;font-size:13px;fill:rgb(119,119,119);">a</text>
+            <text x="-5.005px" y="0px" style="font-family:'Helvetica-Oblique', 'Helvetica';font-style:italic;font-size:9px;fill:rgb(119,119,119);">3</text>
+        </g>
+    </g>
+    <path d="M200,290L200,418" style="fill:none;fill-rule:nonzero;stroke:rgb(170,170,170);stroke-width:1.3px;stroke-dasharray:5,3;"/>
+    <g transform="matrix(1,0,0,1,207.63,424.394)">
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:12px;fill:rgb(119,119,119);">a*</text>
+        <text x="11.344px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(119,119,119);">1</text>
+        <text x="18.85px" y="0px" style="font-family:'Helvetica';font-size:12px;fill:rgb(119,119,119);">||</text>
+        <g transform="matrix(9,0,0,9,63.939,0)">
+        </g>
+        <text x="28.418px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(119,119,119);">[1,0,-1,0]</text>
+    </g>
+    <g transform="matrix(1,0,0,1,340.844,306.77)">
+        <g transform="matrix(9,0,0,9,31.0166,0)">
+        </g>
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(119,119,119);">[-12-10]</text>
+    </g>
+    <g transform="matrix(1,0,0,1,136.912,165.054)">
+        <g transform="matrix(9,0,0,9,31.0166,0)">
+        </g>
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(119,119,119);">[-1-120]</text>
+    </g>
+    <g transform="matrix(1.08312,-0.143964,-0.143964,1.24935,25.1258,-43.5188)">
+        <path d="M200,290L141,392.19" style="fill:none;fill-rule:nonzero;"/>
+        <g transform="matrix(0.937621,0.108043,0.108043,0.812866,-18.8566,32.6603)">
+            <path d="M128.849,421.237L121.384,426.165L121.92,417.237C122.652,419.969 126.116,421.969 128.849,421.237Z" style="fill:rgb(192,57,43);fill-rule:nonzero;"/>
+            <path d="M200,290C200,290 139.329,395.085 124.584,420.622" style="fill:none;fill-rule:nonzero;stroke:rgb(192,57,43);stroke-width:2.67px;"/>
+        </g>
+    </g>
+    <g transform="matrix(1,0,0,1,117.423,359.958)">
+        <text x="0px" y="0px" style="font-family:'Helvetica-Bold', 'Helvetica';font-weight:700;font-size:13px;fill:rgb(192,57,43);">X</text>
+    </g>
+    <g transform="matrix(1,0,0,1,127.791,359.83)">
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(192,57,43);">(X‖a)</text>
+    </g>
+    <g transform="matrix(1,0,0,1.13471,0,-39.0653)">
+        <path d="M200,290L200,410" style="fill:none;fill-rule:nonzero;"/>
+        <g transform="matrix(1,-0,-0,0.881284,-0,34.4276)">
+            <path d="M204.171,417.823L200,426.165L195.829,417.823C197.915,419.908 202.085,419.908 204.171,417.823Z" style="fill:rgb(41,128,185);fill-rule:nonzero;"/>
+            <path d="M200,290L200,419.491" style="fill:none;fill-rule:nonzero;stroke:rgb(41,128,185);stroke-width:2.78px;"/>
+        </g>
+    </g>
+    <g transform="matrix(1,0,0,1,210.121,394.714)">
+        <text x="0px" y="0px" style="font-family:'Helvetica-Bold', 'Helvetica';font-weight:700;font-size:13px;fill:rgb(41,128,185);">X</text>
+    </g>
+    <g transform="matrix(1,0,0,1,223.121,394.714)">
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(41,128,185);">(X‖a*)</text>
+    </g>
+    <path d="M177.5,328.97C184.34,332.92 192.101,335 200,335" style="fill:none;fill-rule:nonzero;stroke:rgb(68,68,68);stroke-width:1.4px;"/>
+    <g transform="matrix(1,0,0,1,180.581,350.392)">
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(68,68,68);">30°</text>
+    </g>
+    <circle cx="200" cy="290" r="3.2" style="fill:rgb(26,26,26);"/>
+    <g>
+        <g transform="matrix(1,0,0,1,200,445)">
+            <text x="-181.827px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">a*</text>
+            <text x="-171.428px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(85,85,85);">1</text>
+            <text x="-163.367px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">is perpendicular to (a</text>
+            <text x="-60.645px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(85,85,85);">2</text>
+            <text x="-55.639px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">, c) — rotated 30° from a</text>
+            <text x="64.915px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(85,85,85);">1</text>
+            <text x="72.976px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">within the basal plane.</text>
+        </g>
+        <g transform="matrix(1,0,0,1,200,461)">
+            <text x="-174.12px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">Picking the Cartesian X-axis along a</text>
+            <text x="2.584px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(85,85,85);">1</text>
+            <text x="10.646px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">(red) or a*</text>
+            <text x="60.162px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(85,85,85);">1</text>
+            <text x="68.223px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">(blue) is a 30° choice.</text>
+        </g>
+    </g>
+    <g transform="matrix(1,0,0,1,600,98)">
+        <g transform="matrix(13,0,0,13,71.8904,0)">
+        </g>
+        <g transform="matrix(13,0,0,13,75.5022,0)">
+        </g>
+        <text x="-159.329px" y="0px" style="font-family:'Helvetica';font-size:13px;fill:rgb(51,51,51);">Same (10-10) plane normal — two pole-ﬁgure positions</text>
+    </g>
+    <circle cx="600" cy="290" r="100" style="fill:rgb(250,250,250);stroke:rgb(187,187,187);stroke-width:1px;"/>
+    <g>
+        <path d="M500,290L700,290" style="fill:none;fill-rule:nonzero;stroke:rgb(216,216,216);stroke-width:0.8px;stroke-dasharray:3,3;"/>
+        <path d="M600,190L600,390" style="fill:none;fill-rule:nonzero;stroke:rgb(216,216,216);stroke-width:0.8px;stroke-dasharray:3,3;"/>
+    </g>
+    <g>
+        <g transform="matrix(1,0,0,1,708,293)">
+            <text x="0px" y="0px" style="font-family:'Helvetica';font-size:10px;fill:rgb(168,168,168);">+x</text>
+        </g>
+        <g transform="matrix(1,0,0,1,603,186)">
+            <text x="0px" y="0px" style="font-family:'Helvetica';font-size:10px;fill:rgb(168,168,168);">+y</text>
+        </g>
+    </g>
+    <path d="M600,290L686.6,240" style="fill:none;fill-rule:nonzero;stroke:rgb(192,57,43);stroke-width:1.3px;"/>
+    <circle cx="686.6" cy="240" r="5.5" style="fill:rgb(192,57,43);"/>
+    <g transform="matrix(1,0,0,1,694,232)">
+        <text x="0px" y="0px" style="font-family:'Helvetica-Bold', 'Helvetica';font-weight:700;font-size:11px;fill:rgb(192,57,43);">X‖a</text>
+    </g>
+    <g transform="matrix(1,0,0,1,694,246)">
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:10px;fill:rgb(192,57,43);">(0.866, 0.5)</text>
+    </g>
+    <path d="M600,290L700,290" style="fill:none;fill-rule:nonzero;stroke:rgb(41,128,185);stroke-width:1.3px;"/>
+    <circle cx="700" cy="290" r="5.5" style="fill:rgb(41,128,185);"/>
+    <g transform="matrix(1,0,0,1,710,283.039)">
+        <text x="0px" y="0px" style="font-family:'Helvetica-Bold', 'Helvetica';font-weight:700;font-size:11px;fill:rgb(41,128,185);">X‖a*</text>
+    </g>
+    <g transform="matrix(1,0,0,1,709.484,305.349)">
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:10px;fill:rgb(41,128,185);">(1, 0)</text>
+    </g>
+    <path d="M635,290C635,283.857 633.382,277.82 630.31,272.5" style="fill:none;fill-rule:nonzero;stroke:rgb(68,68,68);stroke-width:1.4px;"/>
+    <g transform="matrix(1,0,0,1,643,280)">
+        <text x="0px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(68,68,68);">30°</text>
+    </g>
+    <circle cx="600" cy="290" r="3.2" style="fill:rgb(26,26,26);"/>
+    <g>
+        <g transform="matrix(1,0,0,1,600,445)">
+            <text x="-186.532px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">The plane normal of (10-10) is a*</text>
+            <text x="-25.727px" y="0px" style="font-family:'Helvetica';font-size:9px;fill:rgb(85,85,85);">1</text>
+            <text x="-17.666px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">— same physical direction in both frames.</text>
+        </g>
+        <g transform="matrix(1,0,0,1,600,461)">
+            <g transform="matrix(11,0,0,11,12.1521,0)">
+            </g>
+            <g transform="matrix(11,0,0,11,15.2083,0)">
+            </g>
+            <text x="-168.8px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(85,85,85);">Its Cartesian (x, y) — and so its pole-ﬁgure position — rotates by 30°.</text>
+        </g>
+    </g>
+    <rect x="0" y="478" width="800" height="42" style="fill:rgb(247,247,247);"/>
+    <g transform="matrix(1,0,0,1,400,497)">
+        <text x="-283.414px" y="0px" style="font-family:'Helvetica';font-size:11px;fill:rgb(68,68,68);">EbsdLib v3 uses X‖a* for hexagonal/trigonal Laue classes — matching MTEX and Oxford / HKL<tspan x="181.932px 184.989px " y="0px 0px "> a</tspan>cquisition systems.</text>
+    </g>
+    <g transform="matrix(1,0,0,1,400,512)">
+        <text x="-261.089px" y="0px" style="font-family:'Helvetica';font-size:10px;fill:rgb(119,119,119);">See Data/Pole_Figure_V<tspan x="-151.201px -145.64px " y="0px 0px ">al</tspan>idation/ReadMe.md for the full per-Laue-class convention table and validation methodology<tspan x="258.311px " y="0px ">.</tspan></text>
+    </g>
+</svg>
