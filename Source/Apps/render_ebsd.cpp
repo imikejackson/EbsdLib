@@ -16,7 +16,7 @@
  *
  * Usage:
  *   render_ebsd <input.ang|input.ctf> <output_dir>
- *               [--convention {x_a, x_astar}]            (default x_astar)
+ *               [--convention {x_a, x_astar}]            (default x_a)
  *               [--color-key  {tsl, pucm, nh}]           (default tsl)
  *               [--phase N]                              (default: all phases)
  *               [--ref-dir x,y,z]                        (default 0,0,1)
@@ -331,7 +331,7 @@ bool writePoleFigure(const Options& opts, PhaseScan& s, LaueOps::Pointer op, con
   config.hexConvention = opts.convention;
 
   auto names = op->getDefaultPoleFigureNames(opts.convention);
-  config.labels = {names[0], names[1], names[2]};
+  config.poleFigureNames = {names[0], names[1], names[2]};
   config.order = {0, 1, 2};
 
   PoleFigureCompositor compositor;

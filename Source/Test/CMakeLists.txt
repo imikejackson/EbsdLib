@@ -49,6 +49,8 @@ set(EbsdLib_UnitTest_SRCS
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/ModifiedLambertProjectionArrayTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/PoleFigureUtilitiesTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/PoleFigureCompositorTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/DiscretePoleFigureCompositorTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/PoleFigureProjectionTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/PoleFigureLaueComparisonTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/PoleFigurePositionTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/RenderEbsdSmokeTest.cpp
@@ -66,6 +68,7 @@ set(EbsdLib_UnitTest_SRCS
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/GriddedColorKeyTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/PUCMColorKeyTest.cpp
     ${EbsdLibProj_SOURCE_DIR}/Source/Test/ColorKeyKindTest.cpp
+    ${EbsdLibProj_SOURCE_DIR}/Source/Test/MarkerOccupancyGridTest.cpp
 )
 
 
@@ -90,8 +93,8 @@ if(EBSDLIB_DOWNLOAD_TEST_FILES)
     file(MAKE_DIRECTORY "${EBSDLIB_DATA_DIR}/TestFiles/")
   endif()
 
-  ebsdlib_download_test_data(EBSDLIB_DATA_DIR ${EBSDLIB_DATA_DIR} ARCHIVE_NAME Laue_Orientation_Clusters_v6.tar.gz SHA512 f327d3d2a86d539b3c1f3fc755d8f5741d8eb68aab45fc1ab54d9e5db48643903f9a37898366203e6eb2e7585ce57c6e186cca2107acb1a53318b813345cb10a)
-  ebsdlib_download_test_data(EBSDLIB_DATA_DIR ${EBSDLIB_DATA_DIR} ARCHIVE_NAME Pole_Figure_Images_v2.tar.gz SHA512 f272af212fa634d702129721de4b5bbb62a89a0cf872f4230df3ad809cf5c7c6c075847d93efe9c1866c2a832893602b9486937679bb0a1d5987df26f9766799)
+ ebsdlib_download_test_data(EBSDLIB_DATA_DIR ${EBSDLIB_DATA_DIR} ARCHIVE_NAME Laue_Orientation_Clusters_v6.tar.gz SHA512 f327d3d2a86d539b3c1f3fc755d8f5741d8eb68aab45fc1ab54d9e5db48643903f9a37898366203e6eb2e7585ce57c6e186cca2107acb1a53318b813345cb10a)
+ ebsdlib_download_test_data(EBSDLIB_DATA_DIR ${EBSDLIB_DATA_DIR} ARCHIVE_NAME Pole_Figure_Images_v3.tar.gz SHA512 0930baa54ceb7c1d468e6f9b1ee0ffffbdf63b881b7199484136377cc30e7049e94f4cb37b9f199fd53da32c4aac1dd448d5e0b7ef86314696561f07e4ba6ea9)
 
 endif()
 

@@ -54,36 +54,36 @@ namespace ebsdlib
  * developer needs to create a 3 element std::vector and set the order index for the
  * Pole Figure. For example the OrthorhombicOps generates 3 Pole Figures in the order
  * of <001>, <100>, <010>. If the developer would like the Pole Figures to appear
- * in the order of <100>, <010>, <100> then the oder needs to be set as [2, 0, 1].
+ * in the order of <100>, <010>, <100> then the order needs to be set as [2, 0, 1].
  *
  * The other interesting item is the Labels. Each LaueOps subclass uses a default
  * label for each Pole Figure. If the developer would like to over ride those labels
  * then this member can be set with a 3 Element std::vector<std::string> with the new labels.
- * Note that the new lables will REPLACE the default labels.
+ * Note that the new labels will REPLACE the default labels.
  */
 struct PoleFigureConfiguration_t
 {
-  ebsdlib::FloatArrayType* eulers; ///<* The Euler Angles (in Radians) to use for the pole figure
-  int imageDim;                    ///<* The height/width of the generated pole figure
-  int lambertDim;                  ///<* The dimensions in voxels of the Lambert Square used for interpolation
-  int numColors;                   ///<* The number of colors to use in the Pole figure
-  double minScale;                 ///<* The minimum scale of the Pole Figure
-  double maxScale;                 ///<* The maximum scale of the Pole Figure
-  float sphereRadius;              ///<* The radius of the Sphere to compute XYZ coords. Should ALWAYS be 1.0
-  bool discrete;                   ///<* Should the Pole Figure be generated as a discrete plot
-  bool discreteHeatMap;            ///<* Should the discrete be colored via a heat map style coloring
-  std::string colorMap;            ///<* Name of the ColorMap to use
-  std::vector<std::string> labels; ///<* The labels for each of the 3 Pole Figures
-  std::vector<unsigned int> order; ///<* The order that the pole figures should appear in.
-  std::string phaseName;           ///<* The Names of the phase
-  bool FlipFinalImage;             ///<* If TRUE, the final image will be flipped across the X Axis so that +Y axis points UP
+  ebsdlib::FloatArrayType* eulers;                         ///<* The Euler Angles (in Radians) to use for the pole figure
+  int imageDim;                                            ///<* The height/width of the generated pole figure
+  int lambertDim;                                          ///<* The dimensions in voxels of the Lambert Square used for interpolation
+  int numColors;                                           ///<* The number of colors to use in the Pole figure
+  double minScale;                                         ///<* The minimum scale of the Pole Figure
+  double maxScale;                                         ///<* The maximum scale of the Pole Figure
+  float sphereRadius;                                      ///<* The radius of the Sphere to compute XYZ coords. Should ALWAYS be 1.0
+  bool discrete;                                           ///<* Should the Pole Figure be generated as a discrete plot
+  bool discreteHeatMap;                                    ///<* Should the discrete be colored via a heat map style coloring
+  std::string colorMap;                                    ///<* Name of the ColorMap to use
+  std::vector<std::string> labels;                         ///<* The labels for each of the 3 Pole Figures
+  std::vector<unsigned int> order;                         ///<* The order that the pole figures should appear in.
+  std::string phaseName;                                   ///<* The Names of the phase
+  bool flipFinalImage = false;                             ///<* If TRUE, the final image will be flipped across the X Axis so that +Y axis points UP
+  std::vector<std::string> axisNames = {"A1", "A2", "A3"}; ///< The string to use for each axis of the pole figure
 
-  ///<* Cartesian basis convention for hex/trig phases. Default preserves
-  /// current EbsdLib v3 behavior (X||a*) while plumbing is being added;
-  /// this default flips to XParallelA in PR 3 once internal SymOps tables
-  /// are reorganized. Ignored for cubic / tetragonal / orthorhombic /
-  /// monoclinic / triclinic Laue classes. See ebsdlib::HexConvention.
-  ebsdlib::HexConvention hexConvention = ebsdlib::HexConvention::XParallelAStar;
+  ///<* Cartesian basis convention for hex/trig phases. Defaults to X||a
+  /// (TSL/EDAX/legacy DREAM3D), matching the rest of EbsdLib. Ignored for
+  /// cubic / tetragonal / orthorhombic / monoclinic / triclinic Laue classes.
+  /// See ebsdlib::HexConvention.
+  ebsdlib::HexConvention hexConvention = ebsdlib::HexConvention::XParallelA;
 };
 
 /**

@@ -64,14 +64,16 @@ struct InversePoleFigureConfiguration_t
   int numColors;                              ///<* The number of colors to use in the color map
   std::string colorMap;                       ///<* Name of the ColorMap to use
   bool normalizeMRD;                          ///<* true=normalize to MRD (Multiples of Random Distribution), false=raw counts
-  std::vector<std::string> labels;            ///<* The labels for each of the 3 inverse pole figures (e.g., "RD", "TD", "ND")
+  std::vector<std::string> labels;            ///<* The labels for each of the 3 inverse pole figures
   std::string phaseName;                      ///<* The name of the phase
   bool FlipFinalImage;                        ///<* If TRUE, the final image will be flipped across the X Axis so that +Y axis points UP
   /// Cartesian basis convention for hex/trig phases. Affects the Miller-
   /// index labels drawn around the SST in generateAnnotatedIPFDensity.
   /// Ignored for cubic / tetragonal / orthorhombic / monoclinic / triclinic.
+  /// Defaults to X||a (TSL) to match the pole-figure config structs (3.1).
+  /// IPF colors are convention-invariant; this only affects the SST labels.
   /// See ebsdlib::HexConvention.
-  ebsdlib::HexConvention hexConvention = ebsdlib::HexConvention::XParallelAStar;
+  ebsdlib::HexConvention hexConvention = ebsdlib::HexConvention::XParallelA;
 };
 
 /**

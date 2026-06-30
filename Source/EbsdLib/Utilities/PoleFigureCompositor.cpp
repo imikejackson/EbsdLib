@@ -4,8 +4,8 @@
 #include "EbsdLib/Math/EbsdLibMath.h"
 #include "EbsdLib/Utilities/CanvasUtilities.hpp"
 #include "EbsdLib/Utilities/ColorTable.h"
-#include "EbsdLib/Utilities/EbsdStringUtils.hpp"
 #include "EbsdLib/Utilities/Fonts.hpp"
+#include "EbsdLib/Utilities/PoleFigureChrome.h"
 #include "EbsdLib/Utilities/PoleFigureUtilities.h"
 
 #include <fmt/format.h>
@@ -119,11 +119,12 @@ std::vector<UInt8ArrayType::Pointer> PoleFigureCompositor::generatePoleFigures(C
   pfConfig.discrete = config.discrete;
   pfConfig.discreteHeatMap = config.discreteHeatMap;
   pfConfig.colorMap = config.colorMap;
-  pfConfig.labels = config.labels;
+  pfConfig.labels = config.poleFigureNames;
   pfConfig.order = config.order;
   pfConfig.phaseName = config.phaseName;
-  pfConfig.FlipFinalImage = config.flipFinalImage;
+  pfConfig.flipFinalImage = config.flipFinalImage;
   pfConfig.hexConvention = config.hexConvention;
+  pfConfig.axisNames = config.axisNames;
 
   std::vector<LaueOps::Pointer> orientationOps = LaueOps::GetAllOrientationOps();
   if(config.laueOpsIndex >= orientationOps.size())
@@ -134,7 +135,7 @@ std::vector<UInt8ArrayType::Pointer> PoleFigureCompositor::generatePoleFigures(C
   auto result = orientationOps[config.laueOpsIndex]->generatePoleFigure(pfConfig);
 
   // LaueOps::generatePoleFigure updates minScale/maxScale to reflect the actual
-  // data range. Propagate these back so the scalar bar shows correct values.
+  // data range. Propagate these back so the scalar bar shows the correct values.
   config.minScale = pfConfig.minScale;
   config.maxScale = pfConfig.maxScale;
 
@@ -151,7 +152,8 @@ void PoleFigureCompositor::preprocessImages(std::vector<UInt8ArrayType::Pointer>
     g.run([&image, imageDim, flip]() {
       if(flip)
       {
-        image = flipAndMirror(image.get(), imageDim);
+        // Rotate 180 degrees about the horizontal (X) axis, i.e. a vertical flip.
+        image = MirrorImage<uint8_t>(image.get(), imageDim);
       }
       image = convertColorOrder(image.get(), imageDim);
     });
@@ -162,7 +164,8 @@ void PoleFigureCompositor::preprocessImages(std::vector<UInt8ArrayType::Pointer>
   {
     if(flip)
     {
-      image = flipAndMirror(image.get(), imageDim);
+      // Rotate 180 degrees about the horizontal (X) axis, i.e. a vertical flip.
+      image = MirrorImage<uint8_t>(image.get(), imageDim);
     }
     image = convertColorOrder(image.get(), imageDim);
   }
@@ -183,30 +186,23 @@ UInt8ArrayType::Pointer PoleFigureCompositor::compositeToCanvas(const CompositeP
   context.text_baseline = canvas_ity::alphabetic;
 
   // White background
-  context.move_to(0.0f, 0.0f);
-  context.line_to(static_cast<float>(layout.pageWidth), 0.0f);
-  context.line_to(static_cast<float>(layout.pageWidth), static_cast<float>(layout.pageHeight));
-  context.line_to(0.0f, static_cast<float>(layout.pageHeight));
-  context.line_to(0.0f, 0.0f);
-  context.close_path();
-  context.set_color(canvas_ity::fill_style, 1.0f, 1.0f, 1.0f, 1.0f);
-  context.fill();
+  DrawPoleFigureBackground(context, layout);
 
   // Draw each of the 3 pole figures
   for(int i = 0; i < 3 && i < static_cast<int>(images.size()); i++)
   {
-    std::string directionLabel = images[i]->getName();
-    drawPoleFigure(context, *images[i], layout.origins[i], config.imageDim, directionLabel, layout.fontPtSize, layout.margins, latoBold, firaSans);
+    std::string poleFigureName = images[i]->getName();
+    drawPoleFigure(context, config, *images[i], layout.origins[i], poleFigureName, layout.fontPtSize, layout.margins, latoBold, firaSans);
   }
 
   // Title
-  drawTitle(context, config.title, static_cast<float>(layout.pageWidth), layout.fontPtSize, layout.margins, latoBold);
+  DrawPoleFigureTitle(context, config.title, static_cast<float>(layout.pageWidth), layout.fontPtSize, layout.margins, latoBold);
 
   // Legend at 4th position
   const float legendFontPtSize = static_cast<float>(config.imageDim) / 20.0f;
   if(config.discrete)
   {
-    drawInfoBlock(context, config, layout.origins[3], layout.margins, legendFontPtSize, latoRegular);
+    DrawPoleFigureInfoBlock(context, config, layout.origins[3], layout.margins, legendFontPtSize, latoRegular);
   }
   else
   {
@@ -221,106 +217,16 @@ UInt8ArrayType::Pointer PoleFigureCompositor::compositeToCanvas(const CompositeP
 }
 
 // -----------------------------------------------------------------------------
-void PoleFigureCompositor::drawPoleFigure(canvas_ity::canvas& context, const UInt8ArrayType& image, std::array<float, 2> origin, int imageDim, const std::string& directionLabel, float fontPtSize,
-                                          float margins, const std::vector<unsigned char>& latoBold, const std::vector<unsigned char>& firaSans)
+void PoleFigureCompositor::drawPoleFigure(canvas_ity::canvas& context, const CompositePoleFigureConfiguration_t& config, const UInt8ArrayType& image, std::array<float, 2> origin,
+                                          const std::string& poleFigureName, float fontPtSize, float margins, const std::vector<unsigned char>& latoBold, const std::vector<unsigned char>& firaSans)
 {
-  const auto imageSize = static_cast<float>(imageDim);
+  const auto imageSize = static_cast<float>(config.imageDim);
 
   // Draw the pole figure image
-  context.draw_image(const_cast<uint8_t*>(image.getPointer(0)), imageDim, imageDim, imageDim * static_cast<int>(image.getNumberOfComponents()), origin[0] + margins,
+  context.draw_image(const_cast<uint8_t*>(image.getPointer(0)), config.imageDim, config.imageDim, config.imageDim * static_cast<int>(image.getNumberOfComponents()), origin[0] + margins,
                      origin[1] + fontPtSize * 2.0f + margins * 2.0f, imageSize, imageSize);
 
-  // Circle outline
-  context.begin_path();
-  context.line_cap = canvas_ity::circle;
-  context.set_line_width(3.0f);
-  context.set_color(canvas_ity::stroke_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  context.arc(origin[0] + margins + imageSize / 2.0f, origin[1] + fontPtSize * 2.0f + margins * 2.0f + imageSize / 2.0f, imageSize / 2.0f, 0, ebsdlib::constants::k_2PiF);
-  context.stroke();
-  context.close_path();
-
-  // X axis line
-  context.begin_path();
-  context.line_cap = canvas_ity::square;
-  context.set_line_width(2.0f);
-  context.set_color(canvas_ity::stroke_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  context.move_to(origin[0] + margins, origin[1] + fontPtSize * 2.0f + margins * 2.0f + imageSize / 2.0f);
-  context.line_to(origin[0] + margins + imageSize, origin[1] + fontPtSize * 2.0f + margins * 2.0f + imageSize / 2.0f);
-  context.stroke();
-  context.close_path();
-
-  // Y axis line
-  context.begin_path();
-  context.line_cap = canvas_ity::square;
-  context.set_line_width(2.0f);
-  context.set_color(canvas_ity::stroke_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  context.move_to(origin[0] + margins + imageSize / 2.0f, origin[1] + fontPtSize * 2.0f + margins * 2.0f);
-  context.line_to(origin[0] + margins + imageSize / 2.0f, origin[1] + fontPtSize * 2.0f + margins * 2.0f + imageSize);
-  context.stroke();
-  context.close_path();
-
-  // "X" axis label
-  context.begin_path();
-  context.set_font(const_cast<unsigned char*>(latoBold.data()), static_cast<int>(latoBold.size()), fontPtSize);
-  context.set_color(canvas_ity::fill_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  context.text_baseline = canvas_ity::alphabetic;
-  context.fill_text("TD", origin[0] + margins * 1.5f + imageSize, origin[1] + fontPtSize * 2.25f + margins * 2.0f + imageSize / 2.0f);
-  context.close_path();
-
-  // "Y" axis label
-  context.begin_path();
-  context.set_font(const_cast<unsigned char*>(latoBold.data()), static_cast<int>(latoBold.size()), fontPtSize);
-  context.set_color(canvas_ity::fill_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  context.text_baseline = canvas_ity::alphabetic;
-  const float yFontWidth = context.measure_text("RD");
-  context.fill_text("RD", origin[0] + margins - (0.5f * yFontWidth) + imageSize / 2.0f, origin[1] + fontPtSize * 2.0f + margins);
-  context.close_path();
-
-  // Direction label (e.g., "<001>" displayed as "(001)")
-  std::string subtitle = EbsdStringUtils::replace(directionLabel, "<", "(");
-  subtitle = EbsdStringUtils::replace(subtitle, ">", ")");
-
-  std::string bottomPart;
-  std::array<float, 2> textOrigin = {origin[0] + margins, origin[1] + fontPtSize + 2.0f * margins};
-
-  // Handle overbar notation: "-" before a digit draws a line above the digit
-  for(size_t idx = 0; idx < subtitle.size(); idx++)
-  {
-    if(subtitle.at(idx) == '-' && idx + 1 < subtitle.size())
-    {
-      const char charBuf[] = {subtitle[idx + 1], 0};
-      context.set_font(const_cast<unsigned char*>(firaSans.data()), static_cast<int>(firaSans.size()), fontPtSize);
-      float tw = 0.0f;
-      if(!bottomPart.empty())
-      {
-        tw = context.measure_text(bottomPart.c_str());
-      }
-      const float charWidth = context.measure_text(charBuf);
-      const float dashWidth = charWidth * 0.5f;
-      const float dashOffset = charWidth * 0.25f;
-
-      context.begin_path();
-      context.line_cap = canvas_ity::square;
-      context.set_line_width(2.0f);
-      context.set_color(canvas_ity::stroke_style, 0.0f, 0.0f, 0.0f, 1.0f);
-      context.move_to(textOrigin[0] + tw + dashOffset, textOrigin[1] - (0.8f * fontPtSize));
-      context.line_to(textOrigin[0] + tw + dashOffset + dashWidth, textOrigin[1] - (0.8f * fontPtSize));
-      context.stroke();
-      context.close_path();
-    }
-    else
-    {
-      bottomPart.push_back(subtitle.at(idx));
-    }
-  }
-
-  // Draw the direction subtitle text
-  context.begin_path();
-  context.set_font(const_cast<unsigned char*>(firaSans.data()), static_cast<int>(firaSans.size()), fontPtSize);
-  context.set_color(canvas_ity::fill_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  context.text_baseline = canvas_ity::alphabetic;
-  context.fill_text(bottomPart.c_str(), textOrigin[0], textOrigin[1]);
-  context.close_path();
+  DrawPoleFigureFrame(context, config, origin, poleFigureName, fontPtSize, margins, latoBold, firaSans);
 }
 
 // -----------------------------------------------------------------------------
@@ -379,76 +285,7 @@ void PoleFigureCompositor::drawScalarBar(canvas_ity::canvas& context, const Comp
     context.stroke_rectangle(x, y, rectWidth, colorHeight);
   }
 
-  drawInfoBlock(context, config, position, margins, fontPtSize, latoRegular);
-}
-
-// -----------------------------------------------------------------------------
-void PoleFigureCompositor::drawInfoBlock(canvas_ity::canvas& context, const CompositePoleFigureConfiguration_t& config, std::array<float, 2> position, float margins, float fontPtSize,
-                                         const std::vector<unsigned char>& latoRegular)
-{
-  const float scaleBarRelativeWidth = 0.10f;
-  const auto imageWidth = static_cast<float>(config.imageDim);
-  const float rectWidth = imageWidth * scaleBarRelativeWidth;
-
-  std::vector<std::string> laueNames = LaueOps::GetLaueNames();
-  std::string laueGroupName;
-  if(config.laueOpsIndex < laueNames.size())
-  {
-    laueGroupName = laueNames[config.laueOpsIndex];
-  }
-
-  const std::vector<std::string> labels = {fmt::format("Phase Num: {}", config.phaseNumber),
-                                           fmt::format("Material Name: {}", config.phaseName),
-                                           fmt::format("Laue Group: {}", laueGroupName),
-                                           fmt::format("Upper & Lower:"),
-                                           fmt::format("Samples: {}", config.eulers != nullptr ? config.eulers->getNumberOfTuples() : 0),
-                                           fmt::format("Lambert Sq. Dim: {}", config.lambertDim),
-                                           fmt::format("Hex/Trig Convention: {}", config.hexConvention == ebsdlib::HexConvention::XParallelAStar ? "x||a*" : "x||a")};
-
-  float heightInc = 1.0f;
-  for(const auto& label : labels)
-  {
-    context.begin_path();
-    context.set_font(const_cast<unsigned char*>(latoRegular.data()), static_cast<int>(latoRegular.size()), fontPtSize);
-    context.set_color(canvas_ity::fill_style, 0.0f, 0.0f, 0.0f, 1.0f);
-    context.text_baseline = canvas_ity::alphabetic;
-    context.fill_text(label.c_str(), position[0] + margins + rectWidth + margins, position[1] + margins + (static_cast<float>(config.imageDim) / 3.0f) + (heightInc * fontPtSize));
-    context.close_path();
-    heightInc++;
-  }
-}
-
-// -----------------------------------------------------------------------------
-void PoleFigureCompositor::drawTitle(canvas_ity::canvas& context, const std::string& title, float pageWidth, float fontPtSize, float margins, const std::vector<unsigned char>& latoBold)
-{
-  if(title.empty())
-  {
-    return;
-  }
-  context.begin_path();
-  context.set_font(const_cast<unsigned char*>(latoBold.data()), static_cast<int>(latoBold.size()), fontPtSize);
-  context.set_color(canvas_ity::fill_style, 0.0f, 0.0f, 0.0f, 1.0f);
-  context.text_baseline = canvas_ity::alphabetic;
-  context.fill_text(title.c_str(), margins, margins + fontPtSize);
-  context.close_path();
-}
-
-// -----------------------------------------------------------------------------
-UInt8ArrayType::Pointer PoleFigureCompositor::flipAndMirror(UInt8ArrayType* src, int imageDim)
-{
-  UInt8ArrayType::Pointer converted = UInt8ArrayType::CreateArray(static_cast<size_t>(imageDim) * imageDim, src->getComponentDimensions(), src->getName(), true);
-  for(int y = 0; y < imageDim; y++)
-  {
-    const int destY = imageDim - 1 - y;
-    for(int x = 0; x < imageDim; x++)
-    {
-      const size_t indexSrc = static_cast<size_t>(y) * imageDim + x;
-      const size_t indexDest = static_cast<size_t>(destY) * imageDim + x;
-      uint8_t* srcPtr = src->getTuplePointer(indexSrc);
-      converted->setTuple(indexDest, srcPtr);
-    }
-  }
-  return converted;
+  DrawPoleFigureInfoBlock(context, config, position, margins, fontPtSize, latoRegular);
 }
 
 // -----------------------------------------------------------------------------
