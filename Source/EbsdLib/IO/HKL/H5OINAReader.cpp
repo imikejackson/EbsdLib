@@ -41,8 +41,10 @@
 
 #include "EbsdLib/Core/EbsdLibConstants.h"
 #include "EbsdLib/Core/EbsdMacros.h"
+#include "EbsdLib/Math/EbsdLibMath.h"
 #include "EbsdLib/Utilities/EbsdStringUtils.hpp"
 
+#include <charconv>
 #include <cstdint>
 #include <iostream>
 #include <vector>
@@ -220,22 +222,20 @@ int H5OINAReader::readFile()
   int err = -1;
   if(m_HDF5Path.empty())
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: HDF5 Path is empty.";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: HDF5 Path is empty.";
     setErrorCode(-1);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return err;
   }
 
   hid_t fileId = H5Utilities::openFile(getFileName(), true);
   if(fileId < 0)
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: Could not open HDF5 file '" << getFileName() << "'";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: Could not open HDF5 file '" << getFileName() << "'";
     setErrorCode(-2);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return err;
   }
 
@@ -248,11 +248,10 @@ int H5OINAReader::readFile()
   hid_t gid = H5Gopen(fileId, m_HDF5Path.c_str(), H5P_DEFAULT);
   if(gid < 0)
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: Could not open path '" << m_HDF5Path << "'";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: Could not open path '" << m_HDF5Path << "'";
     setErrorCode(-90020);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return getErrorCode();
   }
   sentinel.addGroupId(gid);
@@ -260,11 +259,10 @@ int H5OINAReader::readFile()
   hid_t ebsdGid = H5Gopen(gid, ebsdlib::H5OINA::EBSD.c_str(), H5P_DEFAULT);
   if(ebsdGid < 0)
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: Could not open 'EBSD' Group";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: Could not open 'EBSD' Group";
     setErrorCode(-90007);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return getErrorCode();
   }
   sentinel.addGroupId(ebsdGid);
@@ -273,11 +271,10 @@ int H5OINAReader::readFile()
   err = readHeader(ebsdGid);
   if(err < 0)
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: could not read header";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: could not read the header of scan '" << m_HDF5Path << "'. " << getErrorMessage();
     setErrorCode(-900021);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return getErrorCode();
   }
 
@@ -285,11 +282,10 @@ int H5OINAReader::readFile()
   err = readData(ebsdGid);
   if(err < 0)
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: could not read data. Internal Error code " << err << " generated.";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: could not read the data of scan '" << m_HDF5Path << "'. Internal error code " << err << ". " << getErrorMessage();
     setErrorCode(-900022);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return getErrorCode();
   }
 
@@ -332,11 +328,10 @@ int H5OINAReader::readHeaderOnly()
   hid_t fileId = H5Utilities::openFile(getFileName(), true);
   if(fileId < 0)
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: Could not open HDF5 file '" << getFileName() << "'";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: Could not open HDF5 file '" << getFileName() << "'";
     setErrorCode(-10);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return getErrorCode();
   }
   H5ScopedFileSentinel sentinel(fileId, false);
@@ -346,9 +341,8 @@ int H5OINAReader::readHeaderOnly()
     std::list<std::string> names;
     err = H5Utilities::getGroupObjects(fileId, H5Utilities::CustomHDFDataTypes::Group, names);
 
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error (Internal HDF5 Path is empty): The name of the scan was not specified. There are " << names.size() << " scans available. ";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error (Internal HDF5 Path is empty): The name of the scan was not specified. There are " << names.size() << " scans available. ";
     int nameCount = static_cast<int>(names.size());
     if(nameCount < 10)
     {
@@ -364,7 +358,7 @@ int H5OINAReader::readHeaderOnly()
       ss << name << "\n";
     }
     setErrorCode(-11);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return getErrorCode();
   }
 
@@ -377,11 +371,10 @@ int H5OINAReader::readHeaderOnly()
   hid_t gid = H5Gopen(fileId, m_HDF5Path.c_str(), H5P_DEFAULT);
   if(gid < 0)
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: Could not open path '" << m_HDF5Path << "'";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: Could not open path '" << m_HDF5Path << "'";
     setErrorCode(-12);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     return getErrorCode();
   }
   sentinel.addGroupId(gid);
@@ -407,11 +400,10 @@ int H5OINAReader::readScanNames(std::list<std::string>& names)
   hid_t fileId = H5Utilities::openFile(getFileName(), true);
   if(fileId < 0)
   {
-    std::string str;
-    std::stringstream ss(str);
-    ss << getNameOfClass() << "Error: Could not open HDF5 file '" << getFileName() << "'";
+    std::stringstream ss;
+    ss << getNameOfClass() << " Error: Could not open HDF5 file '" << getFileName() << "'";
     setErrorCode(-20);
-    setErrorMessage(str);
+    setErrorMessage(ss.str());
     names.clear();
     return getErrorCode();
   }
@@ -420,6 +412,18 @@ int H5OINAReader::readScanNames(std::list<std::string>& names)
   err = H5Utilities::getGroupObjects(fileId, H5Utilities::CustomHDFDataTypes::Group, names);
   setErrorCode(err);
   return err;
+}
+
+/**
+ * @brief Converts an angle from radians to degrees, rounding the result once.
+ *
+ * This translation unit has no namespace block, so the helper is given internal
+ * linkage: a generically named function at global scope in a shared library would
+ * collide with any same-signature definition in another translation unit.
+ */
+static float RadiansToDegrees(float radians)
+{
+  return static_cast<float>(static_cast<double>(radians) * ebsdlib::constants::k_180OverPiD);
 }
 
 template <typename T>
@@ -530,28 +534,77 @@ int H5OINAReader::readHeader(hid_t parId)
 
   for(const auto& phaseGroupName : names)
   {
+    int phaseIndex = 0;
+    const auto [parseEnd, parseError] = std::from_chars(phaseGroupName.data(), phaseGroupName.data() + phaseGroupName.size(), phaseIndex);
+    if(parseError != std::errc{} || parseEnd != phaseGroupName.data() + phaseGroupName.size() || phaseIndex < 1 || std::to_string(phaseIndex) != phaseGroupName)
+    {
+      setErrorCode(-90034);
+      setErrorMessage("H5OINAReader Error: Phase group name '" + phaseGroupName + "' is invalid. Phase group names must be positive integers without leading zeros.");
+      return getErrorCode();
+    }
+
     hid_t pid = H5Gopen(phasesGid, phaseGroupName.c_str(), H5P_DEFAULT);
+    if(pid < 0)
+    {
+      setErrorCode(-90030);
+      setErrorMessage("H5OINAReader Error: Could not open the '" + ebsdlib::H5OINA::Phases + "/" + phaseGroupName + "' HDF group.");
+      return getErrorCode();
+    }
 
     CtfPhase::Pointer currentPhase = CtfPhase::New();
-    currentPhase->setPhaseIndex(std::stoi(phaseGroupName));
+    currentPhase->setPhaseIndex(phaseIndex);
 
     READ_PHASE_STRING_DATA("H5OINAReader", pid, ebsdlib::H5OINA::PhaseName, PhaseName, currentPhase)
 
+    // Each dataset below is required to build the phase. Reading them without checking
+    // the error code left the vectors empty when a dataset was missing, and the indexing
+    // that follows was then undefined behaviour instead of a reported error.
     std::vector<float> latticeConstants;
     err = H5Support::H5Lite::readVectorDataset(pid, ebsdlib::H5OINA::LatticeDimensions, latticeConstants);
+    if(err < 0 || latticeConstants.size() < 3)
+    {
+      setErrorCode(-90031);
+      setErrorMessage("H5OINAReader Error: Phase '" + phaseGroupName + "' has no readable 3 element '" + ebsdlib::H5OINA::LatticeDimensions + "' dataset.");
+      H5Gclose(pid);
+      return getErrorCode();
+    }
 
     std::vector<float> latticeAngles;
     err = H5Support::H5Lite::readVectorDataset(pid, ebsdlib::H5OINA::LatticeAngles, latticeAngles);
+    if(err < 0 || latticeAngles.size() < 3)
+    {
+      setErrorCode(-90032);
+      setErrorMessage("H5OINAReader Error: Phase '" + phaseGroupName + "' has no readable 3 element '" + ebsdlib::H5OINA::LatticeAngles + "' dataset.");
+      H5Gclose(pid);
+      return getErrorCode();
+    }
 
-    currentPhase->setLatticeConstants({latticeConstants[0], latticeConstants[1], latticeConstants[2], latticeAngles[0], latticeAngles[1], latticeAngles[1]});
+    // An H5OINA file stores its lattice angles in radians, which is correct for that
+    // format. The angle slots of CtfPhase's lattice constants are degrees-valued for
+    // every other importer (.ang, .ctf and their HDF5 variants), so convert here to keep
+    // the phase model consistent no matter which format it was parsed from. The
+    // conversion runs on a double intermediate so the stored float is correctly rounded.
+    currentPhase->setLatticeConstants(
+        {latticeConstants[0], latticeConstants[1], latticeConstants[2], RadiansToDegrees(latticeAngles[0]), RadiansToDegrees(latticeAngles[1]), RadiansToDegrees(latticeAngles[2])});
 
     int laueGroup = 0;
     err = H5Support::H5Lite::readScalarDataset(pid, ebsdlib::H5OINA::LaueGroup, laueGroup);
+    if(err < 0)
+    {
+      setErrorCode(-90033);
+      setErrorMessage("H5OINAReader Error: Phase '" + phaseGroupName + "' has no readable '" + ebsdlib::H5OINA::LaueGroup + "' dataset, so its crystal symmetry cannot be determined.");
+      H5Gclose(pid);
+      return getErrorCode();
+    }
     currentPhase->setLaueGroup(static_cast<ebsdlib::Ctf::LaueGroupTable>(laueGroup));
 
+    // Space Group is informational for this reader, so a file without it still parses.
     int spaceGroup = 0;
     err = H5Support::H5Lite::readScalarDataset(pid, ebsdlib::H5OINA::SpaceGroup, spaceGroup);
-    currentPhase->setSpaceGroup(spaceGroup);
+    if(err >= 0)
+    {
+      currentPhase->setSpaceGroup(spaceGroup);
+    }
 
     phaseVector.push_back(currentPhase);
     err = H5Gclose(pid);
@@ -588,28 +641,29 @@ int H5OINAReader::readData(hid_t parId)
 {
   int err = -1;
 
-  // Initialize new pointers
-  size_t totalDataRows = 0;
+  // The header cell counts are signed, so they are validated before being widened:
+  // a negative count turns into an enormous size_t and the product below becomes
+  // meaningless.
+  const int xCells = getXCells();
+  const int yCells = getYCells();
 
-  size_t nColumns = getXCells();
-  size_t nRows = getYCells();
-
-  if(nRows < 1)
+  if(yCells < 1)
   {
-    err = -200;
-    setErrorMessage("H5OINAReader Error: The number of Rows was < 1.");
-    setErrorCode(err);
-    return err;
+    setErrorCode(-200);
+    setErrorMessage("H5OINAReader Error: The number of rows ('" + ebsdlib::H5OINA::YCells + "') was " + std::to_string(yCells) + ", which must be at least 1.");
+    return getErrorCode();
   }
 
-  totalDataRows = nRows * nColumns; /* nCols = nOddCols;*/
-
-  if(totalDataRows == 0)
+  if(xCells < 1)
   {
     setErrorCode(-90301);
-    setErrorMessage("There is no data to read. NumRows or NumColumns is Zero (0)");
-    return -301;
+    setErrorMessage("H5OINAReader Error: The number of columns ('" + ebsdlib::H5OINA::XCells + "') was " + std::to_string(xCells) + ", which must be at least 1.");
+    return getErrorCode();
   }
+
+  const size_t nColumns = static_cast<size_t>(xCells);
+  const size_t nRows = static_cast<size_t>(yCells);
+  size_t totalDataRows = nRows * nColumns;
 
   hid_t gid = H5Gopen(parId, ebsdlib::H5OINA::Data.c_str(), H5P_DEFAULT);
   if(gid < 0)
@@ -620,8 +674,6 @@ int H5OINAReader::readData(hid_t parId)
   }
   setNumberOfElements(totalDataRows);
   size_t numBytes = totalDataRows * sizeof(float);
-  std::string sBuf;
-  std::stringstream ss(sBuf);
 
   if(m_ArrayNames.empty() && !m_ReadAllArrays)
   {
